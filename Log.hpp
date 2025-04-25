@@ -1,4 +1,4 @@
-#pragma once
+ï»¿#pragma once
 
 #include <ntifs.h>
 
@@ -9,8 +9,8 @@
 // Returns:   NTSTATUS
 // Qualifier:
 // Parameter: IN CONST PWCHAR FilePath
-// ³õÊ¼»¯LogÎÄ¼şµÄ²Ù×÷
-// ĞèÒª×¢ÒâµÄÊÇ£¬¾ßÌåµÄÎÄ¼şÂ·¾¶ÉèÖÃÊÇĞèÒªÓ¦ÓÃ²ãÌá¹©µÄ
+// åˆå§‹åŒ–Logæ–‡ä»¶çš„æ“ä½œ
+// éœ€è¦æ³¨æ„çš„æ˜¯ï¼Œå…·ä½“çš„æ–‡ä»¶è·¯å¾„è®¾ç½®æ˜¯éœ€è¦åº”ç”¨å±‚æä¾›çš„
 //************************************
 NTSTATUS InitializeLogFile(IN CONST PWCHAR FilePath);
 
@@ -27,15 +27,15 @@ void LogInfo(const char* sFormat, ...);
 ///
 /// @param eStatus - NTSTATUS for message.
 /// @param ... [opt] - additional message: format + parameters.
-/// ¼ì²é·µ»ØÖµµÄ´íÎóÈÕÖ¾
+/// æ£€æŸ¥è¿”å›å€¼çš„é”™è¯¯æ—¥å¿—
 ///
 #define LOGERROR(eStatus, ...) (_LOGINFO_RAW("[ERROR] Line: %s(%d). Errno: %08X. ", __FILE__, __LINE__, eStatus), _LOGINFO_RAW(__VA_ARGS__), (eStatus))
 
-// Êä³ö´íÎó·µ»ØÖµÈÕÖ¾
+// è¾“å‡ºé”™è¯¯è¿”å›å€¼æ—¥å¿—
 #define IFERR_RET(x, ...) {const NTSTATUS _ns = (x); if(!NT_SUCCESS(_ns)) {return LOGERROR(_ns, __VA_ARGS__);}}
 
-// ²»Êä³öĞ£ÑéĞÅÏ¢µÄ´íÎóÈÕÖ¾
-// Ö±½ÓLogĞÅÏ¢
+// ä¸è¾“å‡ºæ ¡éªŒä¿¡æ¯çš„é”™è¯¯æ—¥å¿—
+// ç›´æ¥Logä¿¡æ¯
 #define LOGINFO(...) (_LOGINFO_RAW("[LOGINFO] Line: %s(%d). ", __FILE__, __LINE__), _LOGINFO_RAW(__VA_ARGS__))
 
 
