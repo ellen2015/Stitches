@@ -1,5 +1,6 @@
 #include "ApcInjector.hpp"
 #include "Utils.hpp"
+#include "Log.hpp"
 
 
 
@@ -33,12 +34,14 @@ PloadImageNotifyRoutine(
 	status = PsLookupProcessByProcessId(ProcessId, &pProcess);
 	if (!NT_SUCCESS(status))
 	{
+		LOGERROR(status, "PsLookupProcessByProcessId failed. ProcessId: %d", HandleToULong(ProcessId));
 		return;
 	}
 
 	status = SeLocateProcessImageName(pProcess, &pProcessImage);
 	if (!NT_SUCCESS(status))
 	{
+		LOGERROR(status, "SeLocateProcessImageName failed. ProcessId: %d", HandleToULong(ProcessId));
 		ObDereferenceObject(pProcess);
 		return;
 	}
