@@ -27,6 +27,7 @@ typedef VOID(NTAPI* PKKERNEL_ROUTINE)(
 
 typedef VOID(NTAPI* PKRUNDOWN_ROUTINE)(PRKAPC Apc);
 
+// public exports from ntoskrnl.exe
 EXTERN_C
 {
 NTSYSAPI
