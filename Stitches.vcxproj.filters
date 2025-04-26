@@ -13,10 +13,6 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
-    <Filter Include="Driver Files">
-      <UniqueIdentifier>{8E41214B-6785-4CFE-B992-037D68949A14}</UniqueIdentifier>
-      <Extensions>inf;inv;inx;mof;mc;</Extensions>
-    </Filter>
     <Filter Include="ApcInjectorLib">
       <UniqueIdentifier>{00f38717-bfdc-43c8-b9f8-746dddc616e3}</UniqueIdentifier>
     </Filter>
@@ -25,6 +21,12 @@
     </Filter>
     <Filter Include="Protector">
       <UniqueIdentifier>{9a98092e-1074-456b-8d3e-701c81f86b9b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Monitor">
+      <UniqueIdentifier>{ae7ea6f6-e4ea-4026-8fb5-53d69c0bf28e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Memory">
+      <UniqueIdentifier>{0f269d4c-5954-4c15-83cf-a29f54bd1a40}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -40,6 +42,12 @@
     <ClInclude Include="Utils.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Notify.hpp">
+      <Filter>Monitor</Filter>
+    </ClInclude>
+    <ClInclude Include="New.hpp">
+      <Filter>Memory</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ApcInjector.cpp">
@@ -53,6 +61,9 @@
     </ClCompile>
     <ClCompile Include="Utils.cpp">
       <Filter>Header Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Notify.cpp">
+      <Filter>Monitor</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

@@ -22,6 +22,7 @@ void LogInfo(const char* sFormat, ...);
 
 #define _LOGINFO_RAW(...) LogInfo(__VA_ARGS__)
 
+
 ///
 /// Log error with message.
 ///

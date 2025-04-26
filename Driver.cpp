@@ -1,75 +1,63 @@
 #include "ApcInjector.hpp"
 #include "Utils.hpp"
+#include "Notify.hpp"
+#include "New.hpp"
 
+HANDLE g_hFile {nullptr};
 
+GlobalData* g_pGlobalData;
 
-UNICODE_STRING g_InjectDll;
-UNICODE_STRING g_InjectDll32;
 
 EXTERN_C
 {
 NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject,
 	PUNICODE_STRING RegistryPath);
 
+VOID
+DriverUnload(PDRIVER_OBJECT DriverObject);
+
 };
 
+#if defined(ALLOC_PRAGMA)
 
-// 测试
-VOID
-PloadImageNotifyRoutine(
-	_In_  PUNICODE_STRING FullImageName,
-	_In_  HANDLE ProcessId,
-	_In_  PIMAGE_INFO ImageInfo
-)
-{
-	if (HandleToULong(ProcessId) <= 4)
-	{
-		return;
-	}
+#pragma alloc_text(INIT, DriverEntry)
+#pragma alloc_text(PAGE, DriverUnload)
 
-	NTSTATUS status{ STATUS_SUCCESS };
-	PUNICODE_STRING pProcessImage{ nullptr };
-	PEPROCESS pProcess{ nullptr };
-	status = PsLookupProcessByProcessId(ProcessId, &pProcess);
-	if (!NT_SUCCESS(status))
-	{
-		return;
-	}
+#endif
 
-	status = SeLocateProcessImageName(pProcess, &pProcessImage);
-	if (!NT_SUCCESS(status))
-	{
-		ObDereferenceObject(pProcess);
-		return;
-	}
-
-	// test ... .. .
-	if (pProcessImage && pProcessImage->Buffer)
-	{
-		if (KWstrnstr(pProcessImage->Buffer, L"system32\\notepad.exe") &&
-			KWstrnstr(FullImageName->Buffer, L"system32\\ntdll.dll"))
-		{
-			//DbgBreakPoint();
-			ApcInjectNativeProcess(FullImageName, ProcessId, ImageInfo, &g_InjectDll);
-		}
-		else if (KWstrnstr(pProcessImage->Buffer, L"SysWOW64\\notepad.exe") &&
-			KWstrnstr(FullImageName->Buffer, L"SysWOW64\\ntdll.dll"))
-		{
-			//DbgBreakPoint();
-			ApcInjectWow64Process(FullImageName, ProcessId, ImageInfo, &g_InjectDll32);
-		}
-
-		ExFreePool(pProcessImage);
-		ObDereferenceObject(pProcess);
-	}
-
-}
 
 VOID
 DriverUnload(PDRIVER_OBJECT DriverObject)
 {
 	UNREFERENCED_PARAMETER(DriverObject);
-	PsRemoveLoadImageNotifyRoutine(reinterpret_cast<PLOAD_IMAGE_NOTIFY_ROUTINE>(PloadImageNotifyRoutine));
+	//PsRemoveLoadImageNotifyRoutine(reinterpret_cast<PLOAD_IMAGE_NOTIFY_ROUTINE>(PloadImageNotifyRoutine));
+
+	if (g_hFile)
+	{
+		ZwClose(g_hFile);
+		g_hFile = nullptr;
+	}
+
+	FinalizeNotify();
+
+	if (g_pGlobalData)
+	{
+
+		if (g_pGlobalData->InjectDllx64.Buffer)
+		{
+			ExFreePoolWithTag(g_pGlobalData->InjectDllx64.Buffer, GLOBALDATA_TAG);
+			g_pGlobalData->InjectDllx64.Buffer = nullptr;
+		}
+		if (g_pGlobalData->InjectDllx86.Buffer)
+		{
+			ExFreePoolWithTag(g_pGlobalData->InjectDllx86.Buffer, GLOBALDATA_TAG);
+			g_pGlobalData->InjectDllx86.Buffer = nullptr;
+		}
+
+
+		delete g_pGlobalData;
+		g_pGlobalData = nullptr;
+	}
 }
 
 NTSTATUS
@@ -81,17 +69,69 @@ DriverEntry(
 	UNREFERENCED_PARAMETER(RegistryPath);
 	NTSTATUS status{ STATUS_SUCCESS };
 
+
 	ExInitializeDriverRuntime(DrvRtPoolNxOptIn);
 
-	RtlInitUnicodeString(&g_InjectDll, L"C:\\InjectDir\\InjectDll_x64.dll");
-	RtlInitUnicodeString(&g_InjectDll32, L"C:\\InjectDir\\InjectDll_x86.dll");
-
+	g_pGlobalData = new(NonPagedPoolNx) GlobalData;
+	if (!g_pGlobalData)
+	{
+		DbgPrint("g_pGlobalData alloc failed\r\n");
+		return STATUS_NO_MEMORY;
+	}
 
 	DriverObject->DriverUnload = DriverUnload;
+	status = InitializeLogFile(L"\\??\\C:\\desktop\\Log.txt");
+	if (!NT_SUCCESS(status))
+	{
+		DbgPrint("status = %08X", status);
+		if (g_pGlobalData)
+		{
+			delete g_pGlobalData;
+			g_pGlobalData = nullptr;
+		}
 
+		return status;
+	}
 
-	status = PsSetLoadImageNotifyRoutine(reinterpret_cast<PLOAD_IMAGE_NOTIFY_ROUTINE>(PloadImageNotifyRoutine));
+	// test 
+	// 需要根据业务设置注入dll 路径
+	// 不能以下方方式进行初始化全局变量中的字段 
+	/*RtlInitUnicodeString(&g_pGlobalData->InjectDllx64, L"C:\\InjectDir\\InjectDll_x64.dll");
+	RtlInitUnicodeString(&g_pGlobalData->InjectDllx86, L"C:\\InjectDir\\InjectDll_x86.dll");*/
 
+	UNICODE_STRING ustrDllx64;
+	RtlInitUnicodeString(&ustrDllx64, L"C:\\InjectDir\\InjectDll_x64.dll");
+
+	UNICODE_STRING ustrDllx86;
+	RtlInitUnicodeString(&ustrDllx86, L"C:\\InjectDir\\InjectDll_x86.dll");
+
+	ULONG nAllocDllLength = ustrDllx64.MaximumLength;
+	g_pGlobalData->InjectDllx64.Buffer = reinterpret_cast<PWCH>(ExAllocatePoolZero(NonPagedPoolNx, nAllocDllLength, GLOBALDATA_TAG));
+	if (g_pGlobalData->InjectDllx64.Buffer)
+	{
+		g_pGlobalData->InjectDllx64.Length = 0;
+		g_pGlobalData->InjectDllx64.MaximumLength = ustrDllx64.MaximumLength;
+		RtlCopyUnicodeString(&g_pGlobalData->InjectDllx64, &ustrDllx64);
+	}
+	else
+	{
+		LOGERROR(STATUS_NO_MEMORY, "g_pGlobalData->InjectDllx64.Buffer alloc faid\r\n");
+	}
+
+	nAllocDllLength = ustrDllx86.MaximumLength;
+	g_pGlobalData->InjectDllx86.Buffer = reinterpret_cast<PWCH>(ExAllocatePoolZero(NonPagedPoolNx, nAllocDllLength, GLOBALDATA_TAG));
+	if (g_pGlobalData->InjectDllx86.Buffer)
+	{
+		g_pGlobalData->InjectDllx86.Length = 0;
+		g_pGlobalData->InjectDllx86.MaximumLength = ustrDllx86.MaximumLength;
+		RtlCopyUnicodeString(&g_pGlobalData->InjectDllx86, &ustrDllx86);
+	}
+	else
+	{
+		LOGERROR(STATUS_NO_MEMORY, "g_pGlobalData->InjectDllx86.Buffer alloc faid\r\n");
+	}
+
+	InitializeNotify();
 
 
 	return status;

@@ -174,6 +174,10 @@ vLogInfo(const char* sFormat, va_list va)
 void
 LogInfo(const char* sFormat, ...)
 {
+#if !DBG
+	return;
+#endif
+
 	va_list va;
 	va_start(va, sFormat);
 	vLogInfo(sFormat, va);

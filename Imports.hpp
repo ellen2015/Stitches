@@ -1,5 +1,10 @@
 #pragma once
 
+#pragma warning(push, 3)
+#include <suppress.h>
+#include <fltKernel.h>
+#pragma warning(pop)
+
 #include <ntifs.h>
 #include <ntimage.h>
 #include <ntstrsafe.h>
@@ -169,4 +174,172 @@ NTKERNELAPI
 PVOID
 NTAPI
 PsGetCurrentProcessWow64Process();
+};
+
+//exported since Windows 8.0
+typedef
+__checkReturn
+LOGICAL
+(NTAPI* PPsIsProtectedProcess)(
+	__in PEPROCESS Process
+	);
+
+typedef
+__checkReturn
+PVOID
+(NTAPI* PPsGetProcessWow64Process)(
+	__in PEPROCESS Process
+	);
+
+typedef
+__checkReturn
+NTSTATUS
+(NTAPI* PPsWrapApcWow64Thread)(
+	__inout PVOID* ApcContext,
+	__inout PVOID* ApcRoutine
+	);
+
+typedef
+__checkReturn
+LOGICAL
+(NTAPI* PPsIsProtectedProcessLight)(
+	__in PEPROCESS Process
+	);
+
+typedef
+__drv_maxIRQL(APC_LEVEL)
+SE_SIGNING_LEVEL
+(NTAPI* PPsGetProcessSignatureLevel)(
+	__in PEPROCESS Process,
+	__out PSE_SIGNING_LEVEL SectionSignatureLevel
+	);
+
+typedef
+__drv_maxIRQL(APC_LEVEL)
+__checkReturn
+NTSTATUS
+(NTAPI* PSeGetCachedSigningLevel)(
+	__in PFILE_OBJECT FileObject,
+	__out PULONG Flags,
+	__out PSE_SIGNING_LEVEL SigningLevel,
+	__reserved __out_ecount_full_opt(*ThumbprintSize) PUCHAR Thumbprint,
+	__reserved __out_opt PULONG ThumbprintSize,
+	__reserved __out_opt PULONG ThumbprintAlgorithm
+	);
+
+#define UNPROTECTED_FLAG (1 << 2)
+
+//exported since Windows 8.0
+typedef
+__drv_maxIRQL(APC_LEVEL)
+__checkReturn
+NTSTATUS(NTAPI* PNtSetCachedSigningLevel)(
+	__in ULONG Flags,
+	__in SE_SIGNING_LEVEL InputSigningLevel,
+	__in_ecount(SourceFileCount) PHANDLE SourceFiles,
+	__in ULONG SourceFileCount,
+	__in HANDLE TargetFile
+	);
+
+//
+// ZwQueryInformationProcess needs dynamic linking
+//
+typedef NTSTATUS(NTAPI* PZwQueryInformationProcess)(
+	_In_      HANDLE           ProcessHandle,
+	_In_      PROCESSINFOCLASS ProcessInformationClass,
+	_Out_     PVOID            ProcessInformation,
+	_In_      ULONG            ProcessInformationLength,
+	_Out_opt_ PULONG           ReturnLength
+	);
+
+//
+// ZwQuerySystemInformation needs dynamic linking
+//
+typedef NTSTATUS(NTAPI* PZwQuerySystemInformation)(
+	ULONG  SystemInformationClass,
+	PVOID  SystemInformation,
+	ULONG  SystemInformationLength,
+	PULONG ReturnLength
+	);
+
+//
+// CmCallbackGetKeyObjectIDEx is Win8+ routine
+//
+typedef NTSTATUS(NTAPI* PCmCallbackGetKeyObjectIDEx)(
+	_In_ PLARGE_INTEGER Cookie,
+	_In_ PVOID Object,
+	_Out_opt_ PULONG_PTR ObjectID,
+	_Outptr_opt_ PCUNICODE_STRING* ObjectName,
+	_In_ ULONG Flags
+	);
+
+//
+// CmCallbackReleaseKeyObjectIDEx is Win8+ routine
+//
+typedef VOID(NTAPI* PCmCallbackReleaseKeyObjectIDEx)(
+	_In_ PCUNICODE_STRING ObjectName
+	);
+
+// 优先建议使用这个 VISTA SP1+
+typedef NTSTATUS(NTAPI* PfnPsSetCreateProcessNotifyRoutineEx)(
+	PCREATE_PROCESS_NOTIFY_ROUTINE_EX NotifyRoutine,
+	BOOLEAN                           Remove
+	);
+
+
+
+#if (NTDDI_VERSION >= NTDDI_WIN10_RS2)
+// WINDOWS 10 1703+
+typedef NTSTATUS(NTAPI* PfnPsSetCreateProcessNotifyRoutineEx2)(
+	PSCREATEPROCESSNOTIFYTYPE NotifyType,
+	PVOID                     NotifyInformation,
+	BOOLEAN                   Remove
+	);
+#endif
+
+typedef NTSTATUS(NTAPI* PfnZwTerminateProcess)(
+	IN OPTIONAL		HANDLE   ProcessHandle,
+	IN				NTSTATUS ExitStatus
+	);
+
+struct  GlobalData
+{
+	PDRIVER_OBJECT							pDriverObject	= nullptr;
+	PDEVICE_OBJECT							pDeviceObject	= nullptr;
+	PFLT_FILTER								pFilter			= nullptr;
+
+	PZwQueryInformationProcess				fnZwQueryInformationProcess			= nullptr;
+	PZwQuerySystemInformation				fnZwQuerySystemInformation			= nullptr;
+	PCmCallbackGetKeyObjectIDEx				fnCmCallbackGetKeyObjectIDEx		= nullptr;
+	PCmCallbackReleaseKeyObjectIDEx			fnCmCallbackReleaseKeyObjectIDEx	= nullptr;
+
+
+	// Notify
+	BOOLEAN									bNoptifyIntialized {FALSE};
+
+
+	//
+	// process Notify
+	//
+	PfnPsSetCreateProcessNotifyRoutineEx	pfnPsSetCreateProcessNotifyRoutineEx	= nullptr;
+#if (NTDDI_VERSION >= NTDDI_WIN10_RS2)
+	PfnPsSetCreateProcessNotifyRoutineEx2	pfnPsSetCreateProcessNotifyRoutineEx2	= nullptr;
+#endif
+
+	// APC Injector
+	UNICODE_STRING InjectDllx64{};
+	UNICODE_STRING InjectDllx86{};
+
+	//
+	// Signing verification API
+	//
+	PPsIsProtectedProcess					PsIsProtectedProcess		= nullptr;
+	PPsIsProtectedProcessLight				PsIsProtectedProcessLight	= nullptr;
+	PPsGetProcessSignatureLevel				PsGetProcessSignatureLevel	= nullptr;
+	PSeGetCachedSigningLevel				SeGetCachedSigningLevel		= nullptr;
+	PNtSetCachedSigningLevel				NtSetCachedSigningLevel		= nullptr;
+	PPsGetProcessWow64Process				PsGetProcessWow64Process	= nullptr;
+	PPsWrapApcWow64Thread					PsWrapApcWow64Thread		= nullptr;
+
+	
 };
