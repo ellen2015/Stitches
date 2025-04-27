@@ -1,5 +1,14 @@
 #include "Utils.hpp"
 
+constexpr ULONG MEM_ALLOC_TAG = 'htaP';
+
+#ifndef SYSTEM_PROCESS_NAME
+#define SYSTEM_PROCESS_NAME L"System"
+#endif
+
+#ifndef MAX_PROCESS_IMAGE_LENGTH
+#define MAX_PROCESS_IMAGE_LENGTH	520
+#endif
 
 WCHAR*
 KWstrnstr(
@@ -131,4 +140,211 @@ KGetProcAddress(
 	}
 
 	return NULL;
+}
+
+static
+NTSTATUS
+KQuerySymbolicLink(
+	IN  PUNICODE_STRING SymbolicLinkName,
+	OUT PWCHAR			SymbolicLinkTarget)
+{
+	if (!SymbolicLinkName)
+	{
+		return STATUS_INVALID_PARAMETER;
+	}
+
+	NTSTATUS            status = STATUS_SUCCESS;
+	HANDLE              hLink = NULL;
+	OBJECT_ATTRIBUTES   oa{};
+	UNICODE_STRING		LinkTarget{};
+	// 这里也是醉了
+	InitializeObjectAttributes(&oa, SymbolicLinkName, OBJ_KERNEL_HANDLE | OBJ_CASE_INSENSITIVE, 0, 0);
+
+	// 通过对象先打开符号链接
+	status = ZwOpenSymbolicLinkObject(&hLink, GENERIC_READ, &oa);
+	if (!NT_SUCCESS(status) || !hLink)
+	{
+		return status;
+	}
+
+	// 申请内存
+	LinkTarget.Length = MAX_PATH * sizeof(WCHAR);
+	LinkTarget.MaximumLength = LinkTarget.Length + sizeof(WCHAR);
+	LinkTarget.Buffer = (PWCH)ExAllocatePoolWithTag(NonPagedPool, LinkTarget.MaximumLength, MEM_ALLOC_TAG);
+	if (!LinkTarget.Buffer)
+	{
+		ZwClose(hLink);
+		return STATUS_INSUFFICIENT_RESOURCES;
+	}
+
+	RtlZeroMemory(LinkTarget.Buffer, LinkTarget.MaximumLength);
+
+	// 获取符号链接名
+	status = ZwQuerySymbolicLinkObject(hLink, &LinkTarget, NULL);
+	if (NT_SUCCESS(status))
+	{
+		RtlCopyMemory(SymbolicLinkTarget, LinkTarget.Buffer, wcslen(LinkTarget.Buffer) * sizeof(WCHAR));
+	}
+	if (LinkTarget.Buffer)
+	{
+		ExFreePoolWithTag(LinkTarget.Buffer, MEM_ALLOC_TAG);
+	}
+
+	if (hLink)
+	{
+		ZwClose(hLink);
+		hLink = nullptr;
+	}
+
+
+	return status;
+}
+
+// 设备路径转dos路径
+// 原理是枚举从a到z盘的设备目录,然乎通过ZwOpenSymbolicLinkObject
+// 来获取该设备对应的符号链接,匹配上的话,符号连接就是盘符
+static
+NTSTATUS
+KGetDosProcessPath(
+	IN	PWCHAR DeviceFileName,
+	OUT PWCHAR DosFileName)
+{
+	NTSTATUS			status = STATUS_SUCCESS;
+	WCHAR				DriveLetter{};
+	WCHAR				DriveBuffer[30] = L"\\??\\C:";
+	UNICODE_STRING		DriveLetterName{};
+	WCHAR				LinkTarget[260]{};
+
+	RtlInitUnicodeString(&DriveLetterName, DriveBuffer);
+
+	DosFileName[0] = 0;
+
+	// 从 a 到 z开始枚举 一个个尝试
+	for (DriveLetter = L'A'; DriveLetter <= L'Z'; DriveLetter++)
+	{
+		// 替换盘符
+		DriveLetterName.Buffer[4] = DriveLetter;
+
+		// 通过设备名获取符号连接名
+		status = KQuerySymbolicLink(&DriveLetterName, LinkTarget);
+		if (!NT_SUCCESS(status))
+		{
+			continue;
+		}
+
+		// 判断设备是否与匹配,匹配上的话就是,进行拷贝即可
+		if (_wcsnicmp(DeviceFileName, LinkTarget, wcslen(LinkTarget)) == 0)
+		{
+			wcscpy(DosFileName, DriveLetterName.Buffer + 4);
+			wcscat(DosFileName, DeviceFileName + wcslen(LinkTarget));
+			break;
+		}
+	}
+	return status;
+}
+
+NTSTATUS
+GetProcessImageByPid(
+	IN CONST HANDLE Pid,
+	IN OUT PWCHAR ProcessImage)
+{
+	NTSTATUS status = STATUS_SUCCESS;
+	PEPROCESS pEprocess = NULL;
+	HANDLE hProcess = NULL;
+	PVOID pProcessPath = NULL;
+
+	ULONG uProcessImagePathLength = 0;
+
+	if (!ProcessImage || Pid < (ULongToHandle)(4))
+	{
+		return STATUS_INVALID_PARAMETER;
+	}
+
+	// 修复了bug
+	if (Pid == (ULongToHandle)(4))
+	{
+		RtlCopyMemory(ProcessImage, SYSTEM_PROCESS_NAME, sizeof(SYSTEM_PROCESS_NAME));
+		return status;
+	}
+
+	status = PsLookupProcessByProcessId(Pid, &pEprocess);
+	if (!NT_SUCCESS(status))
+	{
+		return status;
+	}
+
+	__try
+	{
+		do
+		{
+			status = ObOpenObjectByPointer(pEprocess,
+				OBJ_KERNEL_HANDLE,
+				NULL,
+				PROCESS_ALL_ACCESS,
+				*PsProcessType,
+				KernelMode,
+				&hProcess);
+			if (!NT_SUCCESS(status))
+			{
+				break;
+			}
+			//__TIME__
+
+			// 获取长度
+			// https://learn.microsoft.com/zh-cn/windows/win32/procthread/zwqueryinformationprocess
+			status = ZwQueryInformationProcess(hProcess,
+				ProcessImageFileName,
+				NULL,
+				0,
+				&uProcessImagePathLength);
+			if (STATUS_INFO_LENGTH_MISMATCH == status)
+			{
+				// 申请长度+sizeof(UNICODE_STRING)为了安全起见
+				pProcessPath = ExAllocatePoolWithTag(NonPagedPool,
+					uProcessImagePathLength + sizeof(UNICODE_STRING),
+					MEM_ALLOC_TAG);
+				if (pProcessPath)
+				{
+					RtlZeroMemory(pProcessPath, uProcessImagePathLength + sizeof(UNICODE_STRING));
+
+					// 获取数据
+					status = ZwQueryInformationProcess(hProcess,
+						ProcessImageFileName,
+						pProcessPath,
+						uProcessImagePathLength,
+						&uProcessImagePathLength);
+					if (!NT_SUCCESS(status))
+					{
+						break;
+					}
+
+					status = KGetDosProcessPath(reinterpret_cast<PUNICODE_STRING>(pProcessPath)->Buffer, ProcessImage);
+					if (!NT_SUCCESS(status))
+					{
+						break;
+					}
+				}
+			}// end if (STATUS_INFO_LENGTH_MISMATCH == status)
+		} while (FALSE);
+	}
+	__finally
+	{
+
+		if (pProcessPath)
+		{
+			ExFreePoolWithTag(pProcessPath, MEM_ALLOC_TAG);
+			pProcessPath = NULL;
+		}
+
+
+		if (hProcess)
+		{
+			ZwClose(hProcess);
+			hProcess = NULL;
+		}
+	}
+
+	ObDereferenceObject(pEprocess);
+
+	return status;
 }

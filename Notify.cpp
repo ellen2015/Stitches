@@ -1,6 +1,6 @@
 #include "Notify.hpp"
 #include "ApcInjector.hpp"
-
+#include "Log.hpp"
 
 extern GlobalData* g_pGlobalData;
 
@@ -42,8 +42,15 @@ PCreateThreadNotifyRoutine(
 
 		if (bRemoteThread())
 		{
+			WCHAR wszProcessPath[MAX_PATH] = { 0 };
 
+			GetProcessImageByPid(ProcessId, wszProcessPath);
+
+			WCHAR wszFxxk[MAX_PATH] = { 0 };
+			GetProcessImageByPid(PsGetCurrentProcessId(), wszFxxk);
 			
+			LOGINFO("[Fxxk] Process : %ws --- Remote Thread : %d Remote Process %d - ProcessPath : %ws\n", wszFxxk, ThreadId, ProcessId, wszProcessPath);
+
 		}
 	}
 

@@ -10,3 +10,10 @@ PVOID
 KGetProcAddress(
 	IN CONST HANDLE ModuleHandle, 
 	CONST PCHAR FuncName);
+
+
+NTSTATUS 
+GetProcessImageByPid(
+	IN CONST HANDLE Pid, 
+	IN OUT PWCHAR ProcessImage);
+

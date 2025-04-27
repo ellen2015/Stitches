@@ -151,7 +151,14 @@ typedef struct _SYSTEM_THREAD_INFORMATION {
 	ULONG WaitReason;
 } SYSTEM_THREAD_INFORMATION, * PSYSTEM_THREAD_INFORMATION;
 
-
+//typedef enum _MEMORY_INFORMATION_CLASS_EX
+//{
+//	MemoryBasicInformationEx = 0,
+//	MemoryWorkingSetInformation = 1,
+//	MemoryMappedFilenameInformation = 2,
+//	MemoryRegionInformation = 3,
+//	MemoryWorkingSetExInformation = 4,
+//} MEMORY_INFORMATION_CLASS_EX;
 
 
 EXTERN_C
@@ -166,6 +173,17 @@ ZwQuerySystemInformation(
 	OUT PULONG ReturnLength OPTIONAL
 );
 
+NTSYSAPI
+NTSTATUS
+NTAPI
+ZwQueryInformationProcess(
+	IN  HANDLE ProcessHandle,
+	IN  PROCESSINFOCLASS ProcessInformationClass,
+	OUT PVOID ProcessInformation,
+	IN  ULONG ProcessInformationLength,
+	IN  PULONG ReturnLength
+);
+
 
 
 extern PSHORT NtBuildNumber;
@@ -174,6 +192,31 @@ NTKERNELAPI
 PVOID
 NTAPI
 PsGetCurrentProcessWow64Process();
+
+NTSYSAPI
+NTSTATUS
+NTAPI
+ZwQueryInformationThread(
+	IN HANDLE ThreadHandle,
+	IN THREADINFOCLASS ThreadInformationClass,
+	OUT PVOID ThreadInformation,
+	IN ULONG ThreadInformationLength,
+	OUT PULONG ReturnLength OPTIONAL
+);
+
+//NTSYSAPI
+//NTSTATUS
+//NTAPI
+//ZwQueryVirtualMemory(
+//	IN HANDLE  ProcessHandle,
+//	IN PVOID   BaseAddress,
+//	IN MEMORY_INFORMATION_CLASS_EX MemoryInformationClass,
+//	OUT PVOID  Buffer,
+//	IN SIZE_T  Length,
+//	OUT PSIZE_T ResultLength
+//);
+
+
 };
 
 //exported since Windows 8.0
