@@ -295,7 +295,7 @@ InitializeObRegisterCallbacks()
 		stObCbReg.Version = OB_FLT_REGISTRATION_VERSION;
 		stObCbReg.OperationRegistrationCount = OperationRegistrationCount;
 		stObCbReg.OperationRegistration = stObOpReg;
-		RtlInitUnicodeString(&stObCbReg.Altitude, L"368325");
+		RtlInitUnicodeString(&stObCbReg.Altitude, L"1000");
 
 		status = ObRegisterCallbacks(&stObCbReg, &g_pGlobalData->hObRegisterCallbacks);
 		if (NT_SUCCESS(status))
