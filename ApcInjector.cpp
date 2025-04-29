@@ -193,7 +193,7 @@ KGetProcessFirstEThread(
 }
 
 // a improved version of KGetProcessFirstEThread
-static
+
 NTSTATUS
 KGetProcessMainThread(HANDLE ProcessId, PETHREAD* ppThread)
 {
@@ -372,11 +372,11 @@ ApcInjectWow64(
 
 		// Kernel Exports Added for Windows 10 Version 1709
 		// https://www.geoffchappell.com/studies/windows/km/ntoskrnl/history/names1709.htm?ta=11&tx=42;25
-		if (*NtBuildNumber >= 16299)
+		/*if (*NtBuildNumber >= 16299)
 		{
 			status = KGetProcessMainThread(ProcessId, &pEthread);
 		}
-		else
+		else*/
 		{
 			status = KGetProcessFirstEThread(ProcessId, &pEthread);
 		}
@@ -387,7 +387,7 @@ ApcInjectWow64(
 			break;
 		}
 
-		// ����apc
+		// apc
 		pApc = reinterpret_cast<PKAPC>(ExAllocatePoolWithTag(NonPagedPool, sizeof(KAPC), APCINJECT_MEM_TAG));
 		if (!pApc)
 		{
@@ -403,7 +403,7 @@ ApcInjectWow64(
 			UserMode,
 			NULL);
 
-		// ����apc queue
+		// apc queue
 		if (!KeInsertQueueApc(pApc, NULL, NULL, IO_NO_INCREMENT))
 		{
 			ExFreePoolWithTag(pApc, APCINJECT_MEM_TAG);
@@ -486,11 +486,11 @@ ApcInjectNative(
 
 		// Kernel Exports Added for Windows 10 Version 1709
 		// https://www.geoffchappell.com/studies/windows/km/ntoskrnl/history/names1709.htm?ta=11&tx=42;25
-		if (*NtBuildNumber >= 16299)
+		/*if (*NtBuildNumber >= 16299)
 		{
 			status = KGetProcessMainThread(ProcessId, &pEthread);
 		}
-		else
+		else*/
 		{
 			status = KGetProcessFirstEThread(ProcessId, &pEthread);
 		}
@@ -501,7 +501,7 @@ ApcInjectNative(
 			break;
 		}
 
-		// ����apc
+		// apc
 		pApc = reinterpret_cast<PKAPC>(ExAllocatePoolWithTag(NonPagedPool, sizeof(KAPC), APCINJECT_MEM_TAG));
 		if (!pApc)
 		{
@@ -517,7 +517,7 @@ ApcInjectNative(
 			KernelMode,
 			(UCHAR*)pUserBuffer->code);
 
-		// ����apc queue
+		// apc queue
 		if (!KeInsertQueueApc(pApc, NULL, NULL, IO_NO_INCREMENT))
 		{
 			ExFreePoolWithTag(pApc, APCINJECT_MEM_TAG);

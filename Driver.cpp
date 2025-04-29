@@ -20,7 +20,9 @@ InitSystenFucAddr()
 	RtlInitUnicodeString(&ustrPsIsProtectedProcessLight, L"PsIsProtectedProcessLight");
 	g_pGlobalData->PsIsProtectedProcessLight = reinterpret_cast<PPsIsProtectedProcessLight>(MmGetSystemRoutineAddress(&ustrPsIsProtectedProcessLight));
 
-
+	UNICODE_STRING ustrZwTerminateProcess{};
+	RtlInitUnicodeString(&ustrZwTerminateProcess, ZWTERMINATEPROCESS);
+	g_pGlobalData->ZwTerminateProcess = reinterpret_cast<PfnZwTerminateProcess>(MmGetSystemRoutineAddress(&ustrZwTerminateProcess));
 }
 
 
@@ -96,6 +98,7 @@ DriverEntry(
 		DbgPrint("g_pGlobalData alloc failed\r\n");
 		return STATUS_NO_MEMORY;
 	}
+	RtlZeroMemory(g_pGlobalData, sizeof(GlobalData));
 
 	DriverObject->DriverUnload = DriverUnload;
 	status = InitializeLogFile(L"\\??\\C:\\desktop\\Log.txt");
@@ -124,9 +127,10 @@ DriverEntry(
 	RtlInitUnicodeString(&ustrDllx86, L"C:\\InjectDir\\InjectDll_x86.dll");
 
 	ULONG nAllocDllLength = ustrDllx64.MaximumLength;
-	g_pGlobalData->InjectDllx64.Buffer = reinterpret_cast<PWCH>(ExAllocatePoolZero(NonPagedPoolNx, nAllocDllLength, GLOBALDATA_TAG));
+	g_pGlobalData->InjectDllx64.Buffer = reinterpret_cast<PWCH>(ExAllocatePoolWithTag(NonPagedPoolNx, nAllocDllLength, GLOBALDATA_TAG));
 	if (g_pGlobalData->InjectDllx64.Buffer)
 	{
+		RtlZeroMemory(g_pGlobalData->InjectDllx64.Buffer, nAllocDllLength);
 		g_pGlobalData->InjectDllx64.Length = 0;
 		g_pGlobalData->InjectDllx64.MaximumLength = ustrDllx64.MaximumLength;
 		RtlCopyUnicodeString(&g_pGlobalData->InjectDllx64, &ustrDllx64);
@@ -137,9 +141,10 @@ DriverEntry(
 	}
 
 	nAllocDllLength = ustrDllx86.MaximumLength;
-	g_pGlobalData->InjectDllx86.Buffer = reinterpret_cast<PWCH>(ExAllocatePoolZero(NonPagedPoolNx, nAllocDllLength, GLOBALDATA_TAG));
+	g_pGlobalData->InjectDllx86.Buffer = reinterpret_cast<PWCH>(ExAllocatePoolWithTag(NonPagedPoolNx, nAllocDllLength, GLOBALDATA_TAG));
 	if (g_pGlobalData->InjectDllx86.Buffer)
 	{
+		RtlZeroMemory(g_pGlobalData->InjectDllx86.Buffer, nAllocDllLength);
 		g_pGlobalData->InjectDllx86.Length = 0;
 		g_pGlobalData->InjectDllx86.MaximumLength = ustrDllx86.MaximumLength;
 		RtlCopyUnicodeString(&g_pGlobalData->InjectDllx86, &ustrDllx86);

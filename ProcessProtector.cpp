@@ -133,11 +133,15 @@ ProcessPreOperationCallback(
 			{
 				if (FlagOn(originalAccess, PROCESS_VM_READ))
 				{
-					DbgBreakPoint();
 					// 如果是非保护进程操作
 					// 无耻的话可以结束非保护进程
 					*pDesiredAccess |= PROCESS_TERMINATE;
 					
+					// 不建议在这里进行
+					// 可能会遇到APC_LEVEL无法执行Zw*(BSOD)
+					// 考虑ProcessNotify过滤
+					KTerminateProcess(HandleToULong(PsGetCurrentProcessId()));
+
 					LOGINFO("[Read] %ws read lsass\r\n", pCurrentProcessPath->Buffer);
 				}
 			}
@@ -155,7 +159,7 @@ ProcessPreOperationCallback(
 		// testing
 		if (UnicodeStringContains(pTargetProcessPath, L"notepad.exe"))
 		{
-			DbgBreakPoint();
+			//DbgBreakPoint();
 			*pDesiredAccess &= ~PROCESS_TERMINATE;
 
 			LOGINFO("[Protected] %ws kill %ws\r\n ", pCurrentProcessPath->Buffer, pTargetProcessPath->Buffer);

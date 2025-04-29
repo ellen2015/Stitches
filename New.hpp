@@ -13,7 +13,7 @@ _When_((PoolType& NonPagedPoolMustSucceed) != 0,
 {
 	Size = (Size != 0) ? Size : 1;
 
-	return ExAllocatePoolZero(PoolType, Size, GLOBALDATA_TAG);
+	return ExAllocatePoolWithTag(PoolType, Size, GLOBALDATA_TAG);
 }
 
 _When_((PoolType& NonPagedPoolMustSucceed) != 0,
@@ -24,7 +24,7 @@ _When_((PoolType& NonPagedPoolMustSucceed) != 0,
 
 	Size = (Size != 0) ? Size : 1;
 
-	return ExAllocatePoolZero(PoolType, Size, GLOBALDATA_TAG);
+	return ExAllocatePoolWithTag(PoolType, Size, GLOBALDATA_TAG);
 }
 
 void __cdecl operator delete(void* pObject)

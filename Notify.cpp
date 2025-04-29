@@ -116,6 +116,8 @@ NTSTATUS InitializeNotify()
 {
 	NTSTATUS status{ STATUS_SUCCESS };
 
+	//DbgBreakPoint();
+
 	// check Notify initial
 	if (g_pGlobalData->bNoptifyIntialized)
 	{
