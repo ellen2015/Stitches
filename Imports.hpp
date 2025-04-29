@@ -345,6 +345,10 @@ typedef NTSTATUS(NTAPI* PfnZwTerminateProcess)(
 	IN				NTSTATUS ExitStatus
 	);
 
+#ifndef ZWTERMINATEPROCESS
+#define ZWTERMINATEPROCESS				L"ZwTerminateProcess"
+#endif
+
 struct  GlobalData
 {
 	PDRIVER_OBJECT							pDriverObject	= nullptr;
@@ -387,4 +391,8 @@ struct  GlobalData
 	// ObRegisterCallbacks
 	HANDLE									hObRegisterCallbacks		= nullptr;		// ObRegisterCallback句柄
 	BOOLEAN									bObjectRegisterCreated{ FALSE };			// ObRegisterCallback创建标记
+
+
+	PfnZwTerminateProcess					ZwTerminateProcess			= nullptr;
+
 };

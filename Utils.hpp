@@ -27,3 +27,8 @@ UnicodeStringContains(
 
 BOOLEAN
 IsProtectedProcess(IN CONST PEPROCESS Process);
+
+_IRQL_requires_same_ 
+_IRQL_requires_(PASSIVE_LEVEL) 
+NTSTATUS 
+KTerminateProcess(IN CONST ULONG ProcessId);

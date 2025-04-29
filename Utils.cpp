@@ -425,3 +425,62 @@ IsProtectedProcess(IN CONST PEPROCESS Process)
 
 	return FALSE;
 }
+
+
+_IRQL_requires_same_
+_IRQL_requires_(PASSIVE_LEVEL)
+NTSTATUS
+KTerminateProcess(IN CONST ULONG ProcessId)
+{
+	if (ProcessId <= 4 || 
+		KeGetCurrentIrql > PASSIVE_LEVEL)
+	{
+		return STATUS_INVALID_PARAMETER;
+	}
+
+	HANDLE hProcess = nullptr;
+	OBJECT_ATTRIBUTES oa{};
+	NTSTATUS status = STATUS_UNSUCCESSFUL;
+
+	if (!g_pGlobalData->ZwTerminateProcess)
+	{
+		UNICODE_STRING ustrZwTerminateProcess{};
+		RtlInitUnicodeString(&ustrZwTerminateProcess, ZWTERMINATEPROCESS);
+
+		// 再次获取下地址
+		g_pGlobalData->ZwTerminateProcess = reinterpret_cast<PfnZwTerminateProcess>(
+			MmGetSystemRoutineAddress(&ustrZwTerminateProcess));
+		if (!g_pGlobalData->ZwTerminateProcess)
+		{
+			return STATUS_UNSUCCESSFUL;
+		}
+	}
+
+
+
+	__try
+	{
+		oa.Length = sizeof(OBJECT_ATTRIBUTES);
+		InitializeObjectAttributes(&oa, nullptr, OBJ_KERNEL_HANDLE | OBJ_CASE_INSENSITIVE, nullptr, nullptr);
+
+		CLIENT_ID clientId{};
+		clientId.UniqueProcess = (ULongToHandle)(ProcessId);
+
+		status = ZwOpenProcess(&hProcess, 1, &oa, &clientId);
+
+		// 获取进程句柄
+		if (NT_SUCCESS(status))
+		{
+			status = g_pGlobalData->ZwTerminateProcess(hProcess, STATUS_SUCCESS);
+		}
+	}
+	__finally
+	{
+		if (hProcess)
+		{
+			ZwClose(hProcess);
+			hProcess = nullptr;
+		}
+	}
+	return status;
+}
