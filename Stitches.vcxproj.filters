@@ -48,6 +48,9 @@
     <ClInclude Include="New.hpp">
       <Filter>Memory</Filter>
     </ClInclude>
+    <ClInclude Include="ProcessProtector.hpp">
+      <Filter>Protector</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ApcInjector.cpp">
@@ -64,6 +67,9 @@
     </ClCompile>
     <ClCompile Include="Notify.cpp">
       <Filter>Monitor</Filter>
+    </ClCompile>
+    <ClCompile Include="ProcessProtector.cpp">
+      <Filter>Protector</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

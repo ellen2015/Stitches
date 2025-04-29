@@ -1,4 +1,7 @@
-#include "Utils.hpp"
+ï»¿#include "Utils.hpp"
+
+
+extern GlobalData* g_pGlobalData;
 
 constexpr ULONG MEM_ALLOC_TAG = 'htaP';
 
@@ -157,17 +160,17 @@ KQuerySymbolicLink(
 	HANDLE              hLink = NULL;
 	OBJECT_ATTRIBUTES   oa{};
 	UNICODE_STRING		LinkTarget{};
-	// ÕâÀïÒ²ÊÇ×íÁË
+	// è¿™é‡Œä¹Ÿæ˜¯é†‰äº†
 	InitializeObjectAttributes(&oa, SymbolicLinkName, OBJ_KERNEL_HANDLE | OBJ_CASE_INSENSITIVE, 0, 0);
 
-	// Í¨¹ı¶ÔÏóÏÈ´ò¿ª·ûºÅÁ´½Ó
+	// é€šè¿‡å¯¹è±¡å…ˆæ‰“å¼€ç¬¦å·é“¾æ¥
 	status = ZwOpenSymbolicLinkObject(&hLink, GENERIC_READ, &oa);
 	if (!NT_SUCCESS(status) || !hLink)
 	{
 		return status;
 	}
 
-	// ÉêÇëÄÚ´æ
+	// ç”³è¯·å†…å­˜
 	LinkTarget.Length = MAX_PATH * sizeof(WCHAR);
 	LinkTarget.MaximumLength = LinkTarget.Length + sizeof(WCHAR);
 	LinkTarget.Buffer = (PWCH)ExAllocatePoolWithTag(NonPagedPool, LinkTarget.MaximumLength, MEM_ALLOC_TAG);
@@ -179,7 +182,7 @@ KQuerySymbolicLink(
 
 	RtlZeroMemory(LinkTarget.Buffer, LinkTarget.MaximumLength);
 
-	// »ñÈ¡·ûºÅÁ´½ÓÃû
+	// è·å–ç¬¦å·é“¾æ¥å
 	status = ZwQuerySymbolicLinkObject(hLink, &LinkTarget, NULL);
 	if (NT_SUCCESS(status))
 	{
@@ -200,9 +203,9 @@ KQuerySymbolicLink(
 	return status;
 }
 
-// Éè±¸Â·¾¶×ªdosÂ·¾¶
-// Ô­ÀíÊÇÃ¶¾Ù´Óaµ½zÅÌµÄÉè±¸Ä¿Â¼,È»ºõÍ¨¹ıZwOpenSymbolicLinkObject
-// À´»ñÈ¡¸ÃÉè±¸¶ÔÓ¦µÄ·ûºÅÁ´½Ó,Æ¥ÅäÉÏµÄ»°,·ûºÅÁ¬½Ó¾ÍÊÇÅÌ·û
+// è®¾å¤‡è·¯å¾„è½¬dosè·¯å¾„
+// åŸç†æ˜¯æšä¸¾ä»aåˆ°zç›˜çš„è®¾å¤‡ç›®å½•,ç„¶ä¹é€šè¿‡ZwOpenSymbolicLinkObject
+// æ¥è·å–è¯¥è®¾å¤‡å¯¹åº”çš„ç¬¦å·é“¾æ¥,åŒ¹é…ä¸Šçš„è¯,ç¬¦å·è¿æ¥å°±æ˜¯ç›˜ç¬¦
 static
 NTSTATUS
 KGetDosProcessPath(
@@ -219,20 +222,20 @@ KGetDosProcessPath(
 
 	DosFileName[0] = 0;
 
-	// ´Ó a µ½ z¿ªÊ¼Ã¶¾Ù Ò»¸ö¸ö³¢ÊÔ
+	// ä» a åˆ° zå¼€å§‹æšä¸¾ ä¸€ä¸ªä¸ªå°è¯•
 	for (DriveLetter = L'A'; DriveLetter <= L'Z'; DriveLetter++)
 	{
-		// Ìæ»»ÅÌ·û
+		// æ›¿æ¢ç›˜ç¬¦
 		DriveLetterName.Buffer[4] = DriveLetter;
 
-		// Í¨¹ıÉè±¸Ãû»ñÈ¡·ûºÅÁ¬½ÓÃû
+		// é€šè¿‡è®¾å¤‡åè·å–ç¬¦å·è¿æ¥å
 		status = KQuerySymbolicLink(&DriveLetterName, LinkTarget);
 		if (!NT_SUCCESS(status))
 		{
 			continue;
 		}
 
-		// ÅĞ¶ÏÉè±¸ÊÇ·ñÓëÆ¥Åä,Æ¥ÅäÉÏµÄ»°¾ÍÊÇ,½øĞĞ¿½±´¼´¿É
+		// åˆ¤æ–­è®¾å¤‡æ˜¯å¦ä¸åŒ¹é…,åŒ¹é…ä¸Šçš„è¯å°±æ˜¯,è¿›è¡Œæ‹·è´å³å¯
 		if (_wcsnicmp(DeviceFileName, LinkTarget, wcslen(LinkTarget)) == 0)
 		{
 			wcscpy(DosFileName, DriveLetterName.Buffer + 4);
@@ -260,7 +263,7 @@ GetProcessImageByPid(
 		return STATUS_INVALID_PARAMETER;
 	}
 
-	// ĞŞ¸´ÁËbug
+	// ä¿®å¤äº†bug
 	if (Pid == (ULongToHandle)(4))
 	{
 		RtlCopyMemory(ProcessImage, SYSTEM_PROCESS_NAME, sizeof(SYSTEM_PROCESS_NAME));
@@ -290,7 +293,7 @@ GetProcessImageByPid(
 			}
 			//__TIME__
 
-			// »ñÈ¡³¤¶È
+			// è·å–é•¿åº¦
 			// https://learn.microsoft.com/zh-cn/windows/win32/procthread/zwqueryinformationprocess
 			status = ZwQueryInformationProcess(hProcess,
 				ProcessImageFileName,
@@ -299,7 +302,7 @@ GetProcessImageByPid(
 				&uProcessImagePathLength);
 			if (STATUS_INFO_LENGTH_MISMATCH == status)
 			{
-				// ÉêÇë³¤¶È+sizeof(UNICODE_STRING)ÎªÁË°²È«Æğ¼û
+				// ç”³è¯·é•¿åº¦+sizeof(UNICODE_STRING)ä¸ºäº†å®‰å…¨èµ·è§
 				pProcessPath = ExAllocatePoolWithTag(NonPagedPool,
 					uProcessImagePathLength + sizeof(UNICODE_STRING),
 					MEM_ALLOC_TAG);
@@ -307,7 +310,7 @@ GetProcessImageByPid(
 				{
 					RtlZeroMemory(pProcessPath, uProcessImagePathLength + sizeof(UNICODE_STRING));
 
-					// »ñÈ¡Êı¾İ
+					// è·å–æ•°æ®
 					status = ZwQueryInformationProcess(hProcess,
 						ProcessImageFileName,
 						pProcessPath,
@@ -347,4 +350,78 @@ GetProcessImageByPid(
 	ObDereferenceObject(pEprocess);
 
 	return status;
+}
+
+
+
+//************************************
+// Method:    UnicodeStringContains
+// FullName:  UnicodeStringContains
+// Access:    public 
+// Returns:   BOOLEAN
+// Qualifier:
+// Parameter: PUNICODE_STRING UnicodeString
+// Parameter: PCWSTR SearchString
+// https://github.com/Xacone/BestEdrOfTheMarket/blob/main/BestEdrOfTheMarketDriver/src/Utils.cpp
+//************************************
+BOOLEAN
+UnicodeStringContains(
+	PUNICODE_STRING UnicodeString,
+	PCWSTR          SearchString)
+{
+
+	if (UnicodeString == NULL || 
+		UnicodeString->Buffer == NULL || 
+		SearchString == NULL)
+	{
+		return FALSE;
+	}
+
+	size_t searchStringLength = wcslen(SearchString);
+	if (searchStringLength == 0)
+	{
+		return FALSE;
+	}
+
+	USHORT unicodeStringLengthInChars = UnicodeString->Length / sizeof(WCHAR);
+
+	if (unicodeStringLengthInChars < searchStringLength)
+	{
+		return FALSE;
+	}
+
+	for (USHORT i = 0; i <= unicodeStringLengthInChars - searchStringLength; i++)
+	{
+		if (!MmIsAddressValid(&UnicodeString->Buffer[i]))
+		{
+			return FALSE;
+		}
+
+		if (wcsncmp(&UnicodeString->Buffer[i], SearchString, searchStringLength) == 0)
+		{
+			return TRUE;
+		}
+	}
+
+	return FALSE;
+}
+
+BOOLEAN 
+IsProtectedProcess(IN CONST PEPROCESS Process)
+{
+	if (!Process)
+	{
+		return FALSE;
+	}
+
+	if (g_pGlobalData->PsIsProtectedProcess)
+	{
+		return (g_pGlobalData->PsIsProtectedProcess(Process) != 0);
+	}
+	else if (g_pGlobalData->PsIsProtectedProcessLight(Process))
+	{
+		return (g_pGlobalData->PsIsProtectedProcessLight(Process) != 0);
+	}
+
+	return FALSE;
 }

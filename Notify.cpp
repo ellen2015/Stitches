@@ -1,4 +1,4 @@
-#include "Notify.hpp"
+ï»¿#include "Notify.hpp"
 #include "ApcInjector.hpp"
 #include "Log.hpp"
 
@@ -32,9 +32,9 @@ PCreateThreadNotifyRoutine(
 
 	if (Create)
 	{
-		// ÕâÀïĞèÒª×¢Òâ  »¹ÊÇĞèÒªÅäºÏ½ø³ÌÉÏÏÂÎÄÊ¹ÓÃ
-		// ÒòÎªÕâÑùµÄÅĞ¶Ï»áµ¼ÖÂ ¸¸½ø³Ì´´½¨×Ó½ø³ÌµÄÇé¿ö
-		// ×îºÃÊÇÅĞ¶Ï¸¸½ø³ÌpidÊÇ·ñºÍprocessidÏàµÈµÄÇé¿ö
+		// è¿™é‡Œéœ€è¦æ³¨æ„  è¿˜æ˜¯éœ€è¦é…åˆè¿›ç¨‹ä¸Šä¸‹æ–‡ä½¿ç”¨
+		// å› ä¸ºè¿™æ ·çš„åˆ¤æ–­ä¼šå¯¼è‡´ çˆ¶è¿›ç¨‹åˆ›å»ºå­è¿›ç¨‹çš„æƒ…å†µ
+		// æœ€å¥½æ˜¯åˆ¤æ–­çˆ¶è¿›ç¨‹pidæ˜¯å¦å’Œprocessidç›¸ç­‰çš„æƒ…å†µ
 		auto bRemoteThread = [&]() { return (PsGetCurrentProcessId() != ProcessId) &&
 			(PsInitialSystemProcess != PsGetCurrentProcessId()) &&
 			(ProcessId != PsGetProcessId(PsInitialSystemProcess));
@@ -58,7 +58,7 @@ PCreateThreadNotifyRoutine(
 }
 
 
-// ²âÊÔ
+// ï¿½ï¿½ï¿½ï¿½
 static
 VOID
 PloadImageNotifyRoutine(

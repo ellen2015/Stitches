@@ -2,10 +2,26 @@
 #include "Utils.hpp"
 #include "Notify.hpp"
 #include "New.hpp"
+#include "ProcessProtector.hpp"
 
 HANDLE g_hFile {nullptr};
 
 GlobalData* g_pGlobalData;
+
+static
+VOID
+InitSystenFucAddr()
+{
+	UNICODE_STRING ustrPsIsProtectedProcess{};
+	RtlInitUnicodeString(&ustrPsIsProtectedProcess, L"PsIsProtectedProcess");	
+	g_pGlobalData->PsIsProtectedProcess = reinterpret_cast<PPsIsProtectedProcess>(MmGetSystemRoutineAddress(&ustrPsIsProtectedProcess));
+
+	UNICODE_STRING ustrPsIsProtectedProcessLight{};
+	RtlInitUnicodeString(&ustrPsIsProtectedProcessLight, L"PsIsProtectedProcessLight");
+	g_pGlobalData->PsIsProtectedProcessLight = reinterpret_cast<PPsIsProtectedProcessLight>(MmGetSystemRoutineAddress(&ustrPsIsProtectedProcessLight));
+
+
+}
 
 
 EXTERN_C
@@ -39,6 +55,8 @@ DriverUnload(PDRIVER_OBJECT DriverObject)
 	}
 
 	FinalizeNotify();
+
+	FinalizeObRegisterCallbacks();
 
 	if (g_pGlobalData)
 	{
@@ -83,7 +101,7 @@ DriverEntry(
 	status = InitializeLogFile(L"\\??\\C:\\desktop\\Log.txt");
 	if (!NT_SUCCESS(status))
 	{
-		DbgPrint("status = %08X", status);
+		DbgPrint("status = %08X\r\n", status);
 		if (g_pGlobalData)
 		{
 			delete g_pGlobalData;
@@ -94,8 +112,8 @@ DriverEntry(
 	}
 
 	// test 
-	// 需要根据业务设置注入dll 路径
-	// 不能以下方方式进行初始化全局变量中的字段 
+	// 闇�瑕佹牴鎹笟鍔¤缃敞鍏ll 璺緞
+	// 涓嶈兘浠ヤ笅鏂规柟寮忚繘琛屽垵濮嬪寲鍏ㄥ眬鍙橀噺涓殑瀛楁 
 	/*RtlInitUnicodeString(&g_pGlobalData->InjectDllx64, L"C:\\InjectDir\\InjectDll_x64.dll");
 	RtlInitUnicodeString(&g_pGlobalData->InjectDllx86, L"C:\\InjectDir\\InjectDll_x86.dll");*/
 
@@ -131,7 +149,15 @@ DriverEntry(
 		LOGERROR(STATUS_NO_MEMORY, "g_pGlobalData->InjectDllx86.Buffer alloc faid\r\n");
 	}
 
+
+	InitSystenFucAddr();
+
 	InitializeNotify();
+
+
+	InitializeObRegisterCallbacks();
+
+
 
 
 	return status;

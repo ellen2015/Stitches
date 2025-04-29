@@ -26,8 +26,8 @@ BuildWow64Code(
 		0xC2, 0x04, 0x00                        // ret 4
 	};
 
-	// 目标进程申请内存空间保存APC_INJECT的shellcode
-	// 便于之后在apc执行shellcode
+	// 鐩爣杩涚▼鐢宠鍐呭瓨绌洪棿淇濆瓨APC_INJECT鐨剆hellcode
+	// 渚夸簬涔嬪悗鍦╝pc鎵цshellcode
 	status = ZwAllocateVirtualMemory(ProcessHandle,
 		(PVOID*)&pBuffer,
 		0,
@@ -387,7 +387,7 @@ ApcInjectWow64(
 			break;
 		}
 
-		// 申请apc
+		// 锟斤拷锟斤拷apc
 		pApc = reinterpret_cast<PKAPC>(ExAllocatePoolWithTag(NonPagedPool, sizeof(KAPC), APCINJECT_MEM_TAG));
 		if (!pApc)
 		{
@@ -403,7 +403,7 @@ ApcInjectWow64(
 			UserMode,
 			NULL);
 
-		// 插入apc queue
+		// 锟斤拷锟斤拷apc queue
 		if (!KeInsertQueueApc(pApc, NULL, NULL, IO_NO_INCREMENT))
 		{
 			ExFreePoolWithTag(pApc, APCINJECT_MEM_TAG);
@@ -501,7 +501,7 @@ ApcInjectNative(
 			break;
 		}
 
-		// 申请apc
+		// 锟斤拷锟斤拷apc
 		pApc = reinterpret_cast<PKAPC>(ExAllocatePoolWithTag(NonPagedPool, sizeof(KAPC), APCINJECT_MEM_TAG));
 		if (!pApc)
 		{
@@ -517,7 +517,7 @@ ApcInjectNative(
 			KernelMode,
 			(UCHAR*)pUserBuffer->code);
 
-		// 插入apc queue
+		// 锟斤拷锟斤拷apc queue
 		if (!KeInsertQueueApc(pApc, NULL, NULL, IO_NO_INCREMENT))
 		{
 			ExFreePoolWithTag(pApc, APCINJECT_MEM_TAG);
