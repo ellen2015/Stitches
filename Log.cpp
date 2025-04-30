@@ -7,7 +7,6 @@ extern HANDLE g_hFile;
 NTSTATUS
 InitializeLogFile(IN CONST PWCHAR FilePath)
 {
-	//DbgBreakPoint();
 	NTSTATUS status = STATUS_UNSUCCESSFUL;
 
 	if (!FilePath)
@@ -53,16 +52,13 @@ WriteLogToFile(IN CONST PCHAR LogInfo)
 {
 	NTSTATUS status = STATUS_SUCCESS;
 
-	//UNREFERENCED_PARAMETER(LogInfo);
-	//DbgBreakPoint();
-	//HANDLE hFile = GetFileHandle();
 	if (!g_hFile)
 	{
 		return STATUS_UNSUCCESSFUL;
 	}
 
 	IO_STATUS_BLOCK ioStatusBlock{};
-	//auto dataSize = static_cast<ULONG>(strlen(LogInfo));
+	
 	status = ZwWriteFile(
 		g_hFile,
 		nullptr,
@@ -74,15 +70,11 @@ WriteLogToFile(IN CONST PCHAR LogInfo)
 		nullptr, nullptr);
 	if (!NT_SUCCESS(status))
 	{
-		//DbgPrint("status = %08X", status);
+		
 		return status;
 	}
 
-	/*if (KeGetCurrentIrql() == PASSIVE_LEVEL &&
-		!KeAreAllApcsDisabled())
-	{*/
 	status = ZwFlushBuffersFile(g_hFile, &ioStatusBlock);
-	/*}*/
 
 	return status;
 }

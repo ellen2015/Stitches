@@ -23,6 +23,11 @@ InitSystenFucAddr()
 	UNICODE_STRING ustrZwTerminateProcess{};
 	RtlInitUnicodeString(&ustrZwTerminateProcess, ZWTERMINATEPROCESS);
 	g_pGlobalData->ZwTerminateProcess = reinterpret_cast<PfnZwTerminateProcess>(MmGetSystemRoutineAddress(&ustrZwTerminateProcess));
+
+
+	UNICODE_STRING ustrPsGetProcessWow64Process;
+	RtlInitUnicodeString(&ustrPsGetProcessWow64Process, L"PsGetProcessWow64Process");
+	g_pGlobalData->PsGetProcessWow64Process = reinterpret_cast<PPsGetProcessWow64Process>(MmGetSystemRoutineAddress(&ustrPsGetProcessWow64Process));
 }
 
 
@@ -48,7 +53,6 @@ VOID
 DriverUnload(PDRIVER_OBJECT DriverObject)
 {
 	UNREFERENCED_PARAMETER(DriverObject);
-	//PsRemoveLoadImageNotifyRoutine(reinterpret_cast<PLOAD_IMAGE_NOTIFY_ROUTINE>(PloadImageNotifyRoutine));
 
 	if (g_hFile)
 	{

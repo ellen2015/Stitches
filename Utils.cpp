@@ -353,6 +353,105 @@ GetProcessImageByPid(
 }
 
 
+NTSTATUS
+GetProcessImage(
+	IN CONST PEPROCESS Process,
+	IN OUT PWCHAR ProcessImage)
+{
+	if (!ProcessImage || !Process)
+	{
+		return STATUS_INVALID_PARAMETER;
+	}
+
+	NTSTATUS status = STATUS_UNSUCCESSFUL;
+
+	HANDLE hProcess = nullptr;
+
+	ULONG uProcessImagePathLength = 0;
+	PVOID pProcessPath = nullptr;
+	
+	__try
+	{
+		do
+		{
+			status = ObOpenObjectByPointer(Process,
+				OBJ_KERNEL_HANDLE,
+				nullptr,
+				PROCESS_ALL_ACCESS,
+				*PsProcessType,
+				KernelMode,
+				&hProcess);
+
+			if (!NT_SUCCESS(status) || !hProcess)
+			{
+				break;
+			}
+
+			// 获取长度
+			// https://learn.microsoft.com/zh-cn/windows/win32/procthread/zwqueryinformationprocess
+			status = ZwQueryInformationProcess(hProcess,
+				ProcessImageFileName,
+				nullptr,
+				0,
+				&uProcessImagePathLength);
+			if (STATUS_INFO_LENGTH_MISMATCH == status)
+			{
+				// 申请长度+sizeof(UNICODE_STRING)为了安全起见
+				pProcessPath = ExAllocatePoolWithTag(NonPagedPool,
+					uProcessImagePathLength + sizeof(UNICODE_STRING),
+					MEM_ALLOC_TAG);
+				if (pProcessPath)
+				{
+					RtlZeroMemory(pProcessPath, uProcessImagePathLength + sizeof(UNICODE_STRING));
+
+					// 获取数据
+					status = ZwQueryInformationProcess(hProcess,
+						ProcessImageFileName,
+						pProcessPath,
+						uProcessImagePathLength,
+						&uProcessImagePathLength);
+					if (!NT_SUCCESS(status))
+					{
+						break;
+					}
+
+					status = KGetDosProcessPath(reinterpret_cast<PUNICODE_STRING>(pProcessPath)->Buffer, ProcessImage);				
+					if (!NT_SUCCESS(status))
+					{
+						break;
+					}
+
+					//RtlCopyMemory(ProcessImage, pUstrProcessName->Buffer, pUstrProcessName->Length);
+				}
+			}// end if (STATUS_INFO_LENGTH_MISMATCH == status)
+		} while (FALSE);
+	}
+	__finally
+	{
+
+		if (pProcessPath)
+		{
+			ExFreePoolWithTag(pProcessPath, MEM_ALLOC_TAG);
+			pProcessPath = nullptr;
+		}
+
+
+		if (hProcess)
+		{
+			ZwClose(hProcess);
+			hProcess = nullptr;
+		}
+	}
+
+	// 严谨
+	if (Process)
+	{
+		ObDereferenceObject(Process);
+	}
+
+	return status;
+}
+
 
 //************************************
 // Method:    UnicodeStringContains

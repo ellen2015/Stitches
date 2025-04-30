@@ -18,7 +18,13 @@ GetProcessImageByPid(
 	IN OUT PWCHAR ProcessImage);
 
 
-BOOLEAN 
+NTSTATUS 
+GetProcessImage(
+	IN CONST PEPROCESS Process, 
+	IN OUT PWCHAR ProcessImage);
+
+
+BOOLEAN
 UnicodeStringContains(
 	PUNICODE_STRING UnicodeString,
 	PCWSTR SearchString);

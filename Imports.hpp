@@ -372,6 +372,10 @@ struct  GlobalData
 #if (NTDDI_VERSION >= NTDDI_WIN10_RS2)
 	PfnPsSetCreateProcessNotifyRoutineEx2	pfnPsSetCreateProcessNotifyRoutineEx2	= nullptr;
 #endif
+	NPAGED_LOOKASIDE_LIST					ProcessCtxNPList;
+	LIST_ENTRY								ProcessCtxList;
+	FAST_MUTEX								ProcessCtxFastMutex;
+
 
 	// APC Injector
 	UNICODE_STRING InjectDllx64{};
