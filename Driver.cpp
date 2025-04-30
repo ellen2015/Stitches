@@ -8,6 +8,9 @@ HANDLE g_hFile {nullptr};
 
 GlobalData* g_pGlobalData;
 
+static Notify g_Notify;
+
+
 static
 VOID
 InitSystenFucAddr()
@@ -28,6 +31,21 @@ InitSystenFucAddr()
 	UNICODE_STRING ustrPsGetProcessWow64Process;
 	RtlInitUnicodeString(&ustrPsGetProcessWow64Process, L"PsGetProcessWow64Process");
 	g_pGlobalData->PsGetProcessWow64Process = reinterpret_cast<PPsGetProcessWow64Process>(MmGetSystemRoutineAddress(&ustrPsGetProcessWow64Process));
+
+	UNICODE_STRING ustrPsSetCreateProcessNotifyRoutine;
+
+#if (NTDDI_VERSION >= NTDDI_WIN10_RS2)
+	RtlUnicodeStringInit(&ustrPsSetCreateProcessNotifyRoutine, L"PsSetCreateProcessNotifyRoutineEx2");
+
+	g_pGlobalData->pfnPsSetCreateProcessNotifyRoutineEx2 = reinterpret_cast<PfnPsSetCreateProcessNotifyRoutineEx2>(MmGetSystemRoutineAddress(&ustrPsSetCreateProcessNotifyRoutine));
+	
+
+#else
+	RtlUnicodeStringInit(&ustrPsSetCreateProcessNotifyRoutine, L"PsSetCreateProcessNotifyRoutineEx");
+	g_pGlobalData->pfnPsSetCreateProcessNotifyRoutineEx = reinterpret_cast<PfnPsSetCreateProcessNotifyRoutineEx>(MmGetSystemRoutineAddress(&ustrPsSetCreateProcessNotifyRoutine));
+	
+#endif
+
 }
 
 
@@ -60,7 +78,8 @@ DriverUnload(PDRIVER_OBJECT DriverObject)
 		g_hFile = nullptr;
 	}
 
-	FinalizeNotify();
+	//FinalizeNotify();
+	g_Notify.FinalizedNotifys();
 
 	FinalizeObRegisterCallbacks();
 
@@ -161,8 +180,8 @@ DriverEntry(
 
 	InitSystenFucAddr();
 
-	InitializeNotify();
-
+	//InitializeNotify();
+	g_Notify.InitializedNotifys();
 
 	InitializeObRegisterCallbacks();
 
