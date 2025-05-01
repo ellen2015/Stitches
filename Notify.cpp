@@ -18,6 +18,20 @@ constexpr ULONG ProcessContextSize	= sizeof(ProcessContext);
 constexpr ULONG ProcessContextTag	= 'pnCP';
 
 
+VOID InitializedProcessContext()
+{
+	ExInitializeNPagedLookasideList(&g_pGlobalData->ProcessCtxNPList,
+		nullptr,
+		nullptr,
+		0,
+		ProcessContextSize,
+		ProcessContextTag,
+		0);
+
+	InitializeListHead(&g_pGlobalData->ProcessCtxList);
+	ExInitializeFastMutex(&g_pGlobalData->ProcessCtxFastMutex);
+}
+
 static
 VOID
 AddProcessContext(
@@ -139,8 +153,10 @@ DeleteProcessCtxByPid(IN CONST HANDLE ProcessId)
 				break;
 			}
 		}
-
-		pEntry = pEntry->Flink;
+		if (pEntry)
+		{
+			pEntry = pEntry->Flink;
+		}	
 	}
 }
 
@@ -209,50 +225,43 @@ CleanupProcessCtxList()
 }
 
 
-static
-VOID
-PcreateProcessNotifyRoutineEx(
-	IN OUT				PEPROCESS Process,
-	IN OUT				HANDLE ProcessId,
-	IN OUT OPTIONAL		PPS_CREATE_NOTIFY_INFO CreateInfo
-)
+NTSTATUS 
+ThreadNotify::InitializeThreadNotify()
 {
-	UNREFERENCED_PARAMETER(Process);
-	UNREFERENCED_PARAMETER(ProcessId);
-	UNREFERENCED_PARAMETER(CreateInfo);
-
-	if (CreateInfo)
+	if (m_bInitialized)
 	{
-		if (CreateInfo->FileOpenNameAvailable)
-		{
-			// test ... .. .
-			if (UnicodeStringContains(const_cast<PUNICODE_STRING>(CreateInfo->ImageFileName), L"mimikatz.exe"))
-			{
-				// block process create
-				CreateInfo->CreationStatus = STATUS_ACCESS_DISABLED_NO_SAFER_UI_BY_POLICY;
-				LOGINFO("[Block]block  mimikatz create\r\n");
-				return;
-			}
+		return STATUS_SUCCESS;
+	}
 
-			AddProcessContext(Process, ProcessId, CreateInfo);
-		}
+	NTSTATUS status = PsSetCreateThreadNotifyRoutine(reinterpret_cast<PCREATE_THREAD_NOTIFY_ROUTINE>(ThreadNotifyRoutine));
+	if (!NT_SUCCESS(status))
+	{
+		LOGERROR(status, "Thread Notify Created failed\r\n");
 	}
 	else
 	{
-		DeleteProcessCtxByPid(ProcessId);
+		m_bInitialized = TRUE;
+		return status;
 	}
 
-
-
-
-
+	return STATUS_SUCCESS;
 }
 
-static
-VOID
-PCreateThreadNotifyRoutine(
-	IN HANDLE ProcessId,
-	IN HANDLE ThreadId,
+NTSTATUS 
+ThreadNotify::FinalizedThreadNotify()
+{
+	if (!m_bInitialized)
+	{
+		return STATUS_SUCCESS;
+	}
+
+	return PsRemoveCreateThreadNotifyRoutine(reinterpret_cast<PCREATE_THREAD_NOTIFY_ROUTINE>(ThreadNotifyRoutine));
+}
+
+VOID 
+ThreadNotify::ThreadNotifyRoutine(
+	IN HANDLE ProcessId, 
+	IN HANDLE ThreadId, 
 	IN BOOLEAN Create)
 {
 	UNREFERENCED_PARAMETER(ProcessId);
@@ -278,36 +287,142 @@ PCreateThreadNotifyRoutine(
 
 			WCHAR wszFxxk[MAX_PATH] = { 0 };
 			GetProcessImageByPid(PsGetCurrentProcessId(), wszFxxk);
-			
+
 			LOGINFO("[Fxxk] Process : %ws --- Remote Thread : %d Remote Process %d - ProcessPath : %ws\n", wszFxxk, ThreadId, ProcessId, wszProcessPath);
 
 		}
 	}
-
-
 }
 
+NTSTATUS 
+ProcessNotify::InitializeProcessNotify()
+{
+	NTSTATUS status{ STATUS_SUCCESS };
 
-// Test
-static
-VOID
-PloadImageNotifyRoutine(
-	_In_  PUNICODE_STRING FullImageName,
-	_In_  HANDLE ProcessId,
-	_In_  PIMAGE_INFO ImageInfo
-)
+	if (m_bInitialized)
+	{
+		return STATUS_SUCCESS;
+	}
+	if (g_pGlobalData->pfnPsSetCreateProcessNotifyRoutineEx)
+	{
+		
+		status = g_pGlobalData->pfnPsSetCreateProcessNotifyRoutineEx(reinterpret_cast<PCREATE_PROCESS_NOTIFY_ROUTINE_EX>(ProcessNotifyRoutine), FALSE);
+		if (NT_SUCCESS(status))
+		{
+			m_bInitialized = TRUE;
+			return status;
+		}
+		else
+		{
+			m_bInitialized = FALSE;
+			return status;
+		}
+	}
+	else
+	{
+		m_bInitialized = FALSE;
+		return STATUS_UNSUCCESSFUL;
+	}
+}
+
+NTSTATUS 
+ProcessNotify::FinalizedProcessNotify()
+{
+	if (!m_bInitialized)
+	{
+		return STATUS_SUCCESS;
+	}
+
+	if (g_pGlobalData->pfnPsSetCreateProcessNotifyRoutineEx)
+	{
+
+		return g_pGlobalData->pfnPsSetCreateProcessNotifyRoutineEx(reinterpret_cast<PCREATE_PROCESS_NOTIFY_ROUTINE_EX>(ProcessNotifyRoutine), TRUE);
+		
+	}
+
+	return STATUS_SUCCESS;
+}
+
+VOID 
+ProcessNotify::ProcessNotifyRoutine(
+	IN OUT PEPROCESS Process,
+	IN OUT HANDLE ProcessId,
+	IN OUT OPTIONAL PPS_CREATE_NOTIFY_INFO CreateInfo)
+{
+	UNREFERENCED_PARAMETER(Process);
+	UNREFERENCED_PARAMETER(ProcessId);
+	UNREFERENCED_PARAMETER(CreateInfo);
+
+	if (CreateInfo)
+	{
+		if (CreateInfo->FileOpenNameAvailable)
+		{
+			// test ... .. .
+			if (UnicodeStringContains(const_cast<PUNICODE_STRING>(CreateInfo->ImageFileName), L"mimikatz.exe"))
+			{
+				// block process create
+				CreateInfo->CreationStatus = STATUS_ACCESS_DISABLED_NO_SAFER_UI_BY_POLICY;
+				LOGINFO("[Block]block  mimikatz create\r\n");
+				return;
+			}
+
+			AddProcessContext(Process, ProcessId, CreateInfo);
+		}
+	}
+	else
+	{
+		DeleteProcessCtxByPid(ProcessId);
+	}
+}
+
+NTSTATUS 
+ImageNotify::InitializeImageNotify()
+{
+	if (m_bInitialized)
+	{
+		return STATUS_SUCCESS;
+	}
+	NTSTATUS status{ STATUS_SUCCESS };
+	status = PsSetLoadImageNotifyRoutine(reinterpret_cast<PLOAD_IMAGE_NOTIFY_ROUTINE>(ImageNotifyRoutine));
+	if (NT_SUCCESS(status))
+	{
+		m_bInitialized = TRUE;
+	}
+	else
+	{
+		m_bInitialized = FALSE;
+	}
+	return status;
+}
+
+NTSTATUS 
+ImageNotify::FinalizedImageNotify()
+{
+	if (!m_bInitialized)
+	{
+		return STATUS_SUCCESS;
+	}
+
+	return PsRemoveLoadImageNotifyRoutine(reinterpret_cast<PLOAD_IMAGE_NOTIFY_ROUTINE>(ImageNotifyRoutine));
+}
+
+VOID 
+ImageNotify::ImageNotifyRoutine(
+	_In_ PUNICODE_STRING FullImageName, 
+	_In_ HANDLE ProcessId,
+	_In_ PIMAGE_INFO ImageInfo)
 {
 	if (HandleToULong(ProcessId) <= 4)
 	{
 		return;
 	}
 
-	
+
 	ProcessContext* pProcessContext{ nullptr };
 	pProcessContext = FindProcessCtxByPid(ProcessId);
 	if (pProcessContext)
 	{
-		
+
 		if (pProcessContext->ProcessPath.Buffer)
 		{
 			if (KWstrnstr(pProcessContext->ProcessPath.Buffer, L"system32\\notepad.exe") &&
@@ -315,12 +430,12 @@ PloadImageNotifyRoutine(
 			{
 				ApcInjectNativeProcess(FullImageName, ProcessId, ImageInfo, &g_pGlobalData->InjectDllx64);
 			}
-			else 
-			if (KWstrnstr(pProcessContext->ProcessPath.Buffer, L"SysWOW64\\notepad.exe") &&
-				KWstrnstr(FullImageName->Buffer, L"SysWOW64\\ntdll.dll"))
-			{				
-				ApcInjectWow64Process(FullImageName, ProcessId, ImageInfo, &g_pGlobalData->InjectDllx86);
-			}
+			else
+				if (KWstrnstr(pProcessContext->ProcessPath.Buffer, L"SysWOW64\\notepad.exe") &&
+					KWstrnstr(FullImageName->Buffer, L"SysWOW64\\ntdll.dll"))
+				{
+					ApcInjectWow64Process(FullImageName, ProcessId, ImageInfo, &g_pGlobalData->InjectDllx86);
+				}
 		}
 	}
 	else
@@ -346,7 +461,7 @@ PloadImageNotifyRoutine(
 		{
 			if (KWstrnstr(pProcessImage->Buffer, L"system32\\notepad.exe") &&
 				KWstrnstr(FullImageName->Buffer, L"system32\\ntdll.dll"))
-			{		
+			{
 				ApcInjectNativeProcess(FullImageName, ProcessId, ImageInfo, &g_pGlobalData->InjectDllx64);
 			}
 			else if (KWstrnstr(pProcessImage->Buffer, L"SysWOW64\\notepad.exe") &&
@@ -359,141 +474,37 @@ PloadImageNotifyRoutine(
 			ObDereferenceObject(pProcess);
 		}
 	}
-
-
-	
-
 }
 
-_IRQL_requires_same_
-_IRQL_requires_(PASSIVE_LEVEL)
-NTSTATUS InitializeNotify()
+
+VOID Notify::InitializedNotifys()
 {
-	NTSTATUS status{ STATUS_SUCCESS };
+	InitializedProcessContext();
 
-	//DbgBreakPoint();
-
-	// check Notify initial
-	if (g_pGlobalData->bNoptifyIntialized)
-	{
-		return STATUS_SUCCESS;
-	}
-
-
-	// process notify
-	UNICODE_STRING ustrFunc;
-
-#if (NTDDI_VERSION >= NTDDI_WIN10_RS2)
-	RtlUnicodeStringInit(&ustrFunc, L"PsSetCreateProcessNotifyRoutineEx2");
-
-	g_pGlobalData->pfnPsSetCreateProcessNotifyRoutineEx2 = reinterpret_cast<PfnPsSetCreateProcessNotifyRoutineEx2>(MmGetSystemRoutineAddress(&ustrFunc));
-	if (g_pGlobalData->pfnPsSetCreateProcessNotifyRoutineEx2)
-	{
-		status = g_pGlobalData->pfnPsSetCreateProcessNotifyRoutineEx2(reinterpret_cast<PCREATE_PROCESS_NOTIFY_ROUTINE_EX>(PcreateProcessNotifyRoutineEx),
-			FALSE);
-	}
-
-#else
-	RtlUnicodeStringInit(&ustrFunc, L"PsSetCreateProcessNotifyRoutineEx");
-	g_pGlobalData->pfnPsSetCreateProcessNotifyRoutineEx = reinterpret_cast<PfnPsSetCreateProcessNotifyRoutineEx>(MmGetSystemRoutineAddress(&ustrFunc));
-	if (g_pGlobalData->pfnPsSetCreateProcessNotifyRoutineEx)
-	{
-		status = g_pGlobalData->pfnPsSetCreateProcessNotifyRoutineEx(reinterpret_cast<PCREATE_PROCESS_NOTIFY_ROUTINE_EX>(PcreateProcessNotifyRoutineEx),
-			FALSE);
-	}
-#endif
-
-	if (!NT_SUCCESS(status))
-	{
-		LOGERROR(status, "Process Notify Created failed\r\n");
-		return status;
-	}
-
-	ExInitializeNPagedLookasideList(&g_pGlobalData->ProcessCtxNPList,
-		nullptr,
-		nullptr,
-		0,
-		ProcessContextSize,
-		ProcessContextTag, 
-		0);
-
-	InitializeListHead(&g_pGlobalData->ProcessCtxList);
-	ExInitializeFastMutex(&g_pGlobalData->ProcessCtxFastMutex);
-
-
-	// Thread Notify
-	status = PsSetCreateThreadNotifyRoutine(reinterpret_cast<PCREATE_THREAD_NOTIFY_ROUTINE>(PCreateThreadNotifyRoutine));
-	if (!NT_SUCCESS(status))
-	{
-		LOGERROR(status, "Thread Notify Created failed\r\n");
-		goto THREAD_FAIL;
-	}
-
-
-	// Image Notify
-	status = PsSetLoadImageNotifyRoutine(reinterpret_cast<PLOAD_IMAGE_NOTIFY_ROUTINE>(PloadImageNotifyRoutine));
-	if (!NT_SUCCESS(status))
-	{
-		LOGERROR(status, "Image Notify Created failed\r\n");
-		goto IMAGE_FIAL;
-	}
-
-	g_pGlobalData->bNoptifyIntialized = TRUE;
-	return status;
-
-
-IMAGE_FIAL:
-	status = PsRemoveCreateThreadNotifyRoutine(reinterpret_cast<PCREATE_THREAD_NOTIFY_ROUTINE>(PCreateThreadNotifyRoutine));
-
-THREAD_FAIL:
-#if (NTDDI_VERSION >= NTDDI_WIN10_RS2)
-	if (g_pGlobalData->pfnPsSetCreateProcessNotifyRoutineEx2)
-	{
-		status = g_pGlobalData->pfnPsSetCreateProcessNotifyRoutineEx(reinterpret_cast<PCREATE_PROCESS_NOTIFY_ROUTINE_EX>(PcreateProcessNotifyRoutineEx),
-			TRUE);
-	}
-#else
-	if (g_pGlobalData->pfnPsSetCreateProcessNotifyRoutineEx)
-	{
-		status = g_pGlobalData->pfnPsSetCreateProcessNotifyRoutineEx(reinterpret_cast<PCREATE_PROCESS_NOTIFY_ROUTINE_EX>(PcreateProcessNotifyRoutineEx),
-			TRUE);
-	}
-#endif
-	return status;
+	m_ProcessNotify.InitializeProcessNotify();
+	m_ThreadNotify.InitializeThreadNotify();
+	m_ImageNotify.InitializeImageNotify();
 }
 
-_IRQL_requires_max_(APC_LEVEL)
-NTSTATUS FinalizeNotify()
+VOID
+Notify::FinalizedNotifys()
 {
-	NTSTATUS status{ STATUS_SUCCESS };
-
-	if (!g_pGlobalData->bNoptifyIntialized)
-	{
-		return STATUS_SUCCESS;
-	}
-
 	CleanupProcessCtxList();
 
 	ExDeleteNPagedLookasideList(&g_pGlobalData->ProcessCtxNPList);
 
-#if (NTDDI_VERSION >= NTDDI_WIN10_RS2)
-	if (g_pGlobalData->pfnPsSetCreateProcessNotifyRoutineEx2)
+	if (m_ImageNotify.m_bInitialized)
 	{
-		status = g_pGlobalData->pfnPsSetCreateProcessNotifyRoutineEx(reinterpret_cast<PCREATE_PROCESS_NOTIFY_ROUTINE_EX>(PcreateProcessNotifyRoutineEx),
-			TRUE);
+		m_ImageNotify.FinalizedImageNotify();
 	}
-#else
-	if (g_pGlobalData->pfnPsSetCreateProcessNotifyRoutineEx)
+
+	if (m_ThreadNotify.m_bInitialized)
 	{
-		status = g_pGlobalData->pfnPsSetCreateProcessNotifyRoutineEx(reinterpret_cast<PCREATE_PROCESS_NOTIFY_ROUTINE_EX>(PcreateProcessNotifyRoutineEx),
-			TRUE);
+		m_ThreadNotify.FinalizedThreadNotify();
 	}
-#endif
 
-	status = PsRemoveCreateThreadNotifyRoutine(reinterpret_cast<PCREATE_THREAD_NOTIFY_ROUTINE>(PCreateThreadNotifyRoutine));
-
-
-	status = PsRemoveLoadImageNotifyRoutine(reinterpret_cast<PLOAD_IMAGE_NOTIFY_ROUTINE>(PloadImageNotifyRoutine));
-
-	return status;
+	if (m_ProcessNotify.m_bInitialized)
+	{
+		m_ProcessNotify.FinalizedProcessNotify();
+	}
 }
