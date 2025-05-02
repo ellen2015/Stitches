@@ -4,16 +4,13 @@
 #include "New.hpp"
 #include "ProcessProtector.hpp"
 
+
 HANDLE g_hFile {nullptr};
 
 GlobalData* g_pGlobalData;
 
-static Notify g_Notify;
-
-
-static
 VOID
-InitSystenFucAddr()
+InitSystemFucAddr()
 {
 	UNICODE_STRING ustrPsIsProtectedProcess{};
 	RtlInitUnicodeString(&ustrPsIsProtectedProcess, L"PsIsProtectedProcess");	
@@ -78,8 +75,9 @@ DriverUnload(PDRIVER_OBJECT DriverObject)
 		g_hFile = nullptr;
 	}
 
-	//FinalizeNotify();
-	g_Notify.FinalizedNotifys();
+	
+	Notify::getInstance()->FinalizedNotifys();
+	delete Notify::getInstance();
 
 	FinalizeObRegisterCallbacks();
 
@@ -178,14 +176,12 @@ DriverEntry(
 	}
 
 
-	InitSystenFucAddr();
+	InitSystemFucAddr();
 
-	//InitializeNotify();
-	g_Notify.InitializedNotifys();
+
+	Notify::getInstance()->InitializedNotifys();
 
 	InitializeObRegisterCallbacks();
-
-
 
 
 	return status;

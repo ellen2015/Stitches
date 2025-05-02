@@ -349,11 +349,42 @@ typedef NTSTATUS(NTAPI* PfnZwTerminateProcess)(
 #define ZWTERMINATEPROCESS				L"ZwTerminateProcess"
 #endif
 
+
+typedef enum  _VolumeControlFlag
+{
+	/// <summary>
+	/// Get all the attached volumes' information.
+	/// </summary>
+	GET_ATTACHED_VOLUME_INFO = 0x00000001,
+	/// <summary>
+	/// Get a notification when the filter driver attached to a volume.
+	/// </summary>
+	VOLUME_ATTACHED_NOTIFICATION = 0x00000002,
+	/// <summary>
+	/// Get a notification when the filter driver detached from a volume.
+	/// </summary>
+	VOLUME_DETACHED_NOTIFICATION = 0x00000004,
+	/// <summary>
+	///Prevent the attched volumes from being formatted or dismounted.
+	/// </summary>
+	BLOCK_VOLUME_DISMOUNT = 0x00000008,
+	/// <summary>
+	///Block the read from the USB disk.
+	/// </summary>
+	BLOCK_USB_READ = 0x00000010,
+	/// <summary>
+	///Block the write to the USB disk
+	/// </summary>
+	BLOCK_USB_WRITE = 0x00000020,
+
+
+}VolumeControlFlag;
+
 struct  GlobalData
 {
 	PDRIVER_OBJECT							pDriverObject	= nullptr;
 	PDEVICE_OBJECT							pDeviceObject	= nullptr;
-	PFLT_FILTER								pFilter			= nullptr;
+	PFLT_FILTER								pFileFilter		= nullptr;
 
 	PZwQueryInformationProcess				fnZwQueryInformationProcess			= nullptr;
 	PZwQuerySystemInformation				fnZwQuerySystemInformation			= nullptr;
@@ -399,4 +430,6 @@ struct  GlobalData
 
 	PfnZwTerminateProcess					ZwTerminateProcess			= nullptr;
 
+
+	volatile VolumeControlFlag				volumeControlFlag;
 };

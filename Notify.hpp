@@ -1,7 +1,7 @@
 #pragma once
 #include "Imports.hpp"
 #include "Log.hpp"
-
+#include "Singleton.hpp"
 
 
 class ThreadNotify
@@ -78,20 +78,10 @@ public:
 };
 
 
-class Notify
+class Notify : public Singleton<Notify>
 {
 public:
-	Notify()	= default;
-	
-	~Notify()	= default;
-	
-
-	Notify(const Notify&)	= delete;
-	Notify(Notify&&)		= delete;
-	Notify& operator=(const Notify&) = delete;
-
 	VOID InitializedNotifys();
-
 	VOID FinalizedNotifys();
 
 private:
