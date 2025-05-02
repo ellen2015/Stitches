@@ -206,7 +206,6 @@ KQuerySymbolicLink(
 // 设备路径转dos路径
 // 原理是枚举从a到z盘的设备目录,然乎通过ZwOpenSymbolicLinkObject
 // 来获取该设备对应的符号链接,匹配上的话,符号连接就是盘符
-static
 NTSTATUS
 KGetDosProcessPath(
 	IN	PWCHAR DeviceFileName,

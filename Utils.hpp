@@ -13,6 +13,12 @@ KGetProcAddress(
 
 
 NTSTATUS 
+KGetDosProcessPath(
+	IN PWCHAR DeviceFileName,
+	OUT PWCHAR DosFileName);
+
+
+NTSTATUS
 GetProcessImageByPid(
 	IN CONST HANDLE Pid, 
 	IN OUT PWCHAR ProcessImage);

@@ -45,11 +45,20 @@
     <ClInclude Include="Notify.hpp">
       <Filter>Monitor</Filter>
     </ClInclude>
+    <ClInclude Include="ProcessProtector.hpp">
+      <Filter>Protector</Filter>
+    </ClInclude>
+    <ClInclude Include="FileFilter.hpp">
+      <Filter>Monitor</Filter>
+    </ClInclude>
+    <ClInclude Include="GenericTable.hpp">
+      <Filter>Memory</Filter>
+    </ClInclude>
     <ClInclude Include="New.hpp">
       <Filter>Memory</Filter>
     </ClInclude>
-    <ClInclude Include="ProcessProtector.hpp">
-      <Filter>Protector</Filter>
+    <ClInclude Include="Singleton.hpp">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -70,6 +79,12 @@
     </ClCompile>
     <ClCompile Include="ProcessProtector.cpp">
       <Filter>Protector</Filter>
+    </ClCompile>
+    <ClCompile Include="FileFilter.cpp">
+      <Filter>Monitor</Filter>
+    </ClCompile>
+    <ClCompile Include="New.cpp">
+      <Filter>Memory</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>
