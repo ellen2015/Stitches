@@ -25,7 +25,7 @@
     <Filter Include="Monitor">
       <UniqueIdentifier>{ae7ea6f6-e4ea-4026-8fb5-53d69c0bf28e}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Memory">
+    <Filter Include="KernelStl">
       <UniqueIdentifier>{0f269d4c-5954-4c15-83cf-a29f54bd1a40}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
@@ -48,14 +48,11 @@
     <ClInclude Include="ProcessProtector.hpp">
       <Filter>Protector</Filter>
     </ClInclude>
-    <ClInclude Include="FileFilter.hpp">
-      <Filter>Monitor</Filter>
-    </ClInclude>
     <ClInclude Include="GenericTable.hpp">
-      <Filter>Memory</Filter>
+      <Filter>KernelStl</Filter>
     </ClInclude>
     <ClInclude Include="New.hpp">
-      <Filter>Memory</Filter>
+      <Filter>KernelStl</Filter>
     </ClInclude>
     <ClInclude Include="Singleton.hpp">
       <Filter>Header Files</Filter>
@@ -80,11 +77,8 @@
     <ClCompile Include="ProcessProtector.cpp">
       <Filter>Protector</Filter>
     </ClCompile>
-    <ClCompile Include="FileFilter.cpp">
-      <Filter>Monitor</Filter>
-    </ClCompile>
     <ClCompile Include="New.cpp">
-      <Filter>Memory</Filter>
+      <Filter>KernelStl</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

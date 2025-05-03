@@ -12,23 +12,30 @@ protected:
 	Singleton(Singleton&&) = delete;
 	Singleton& operator=(const Singleton&) = delete;
 
-protected:
-	static T* instance;
+private:
+	static T* _Instance;
 public:
 	static T* getInstance()
 	{
-		if (instance)
+		if (_Instance)
 		{
-			return instance;
+			return _Instance;
 		}
 		else
 		{
-			instance = new(NonPagedPoolNx) T;
-			NT_ASSERT(instance != nullptr);
-			return instance;
+			auto pObject = new(NonPagedPoolNx) T;
+			if (!InterlockedCompareExchangePointer((PVOID*)&_Instance, pObject, nullptr))
+			{
+				return _Instance;
+			}
+			else
+			{
+				delete pObject;
+				return _Instance;
+			}
 		}
 	}
 };
 
 template<typename T>
-__declspec(selectany) T* Singleton<T>::instance;
+__declspec(selectany) T* Singleton<T>::_Instance;
