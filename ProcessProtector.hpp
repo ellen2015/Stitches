@@ -1,13 +1,32 @@
 #pragma once
 #include "Imports.hpp"
-
-EXTERN_C_START
-
-NTSTATUS
-InitializeObRegisterCallbacks();
+#include "Singleton.hpp"
 
 
-VOID
-FinalizeObRegisterCallbacks();
+class ProcessProtector : public Singleton<ProcessProtector>
+{
+public:
+	NTSTATUS
+	InitializeObRegisterCallbacks();
 
-EXTERN_C_END
+	VOID
+	FinalizeObRegisterCallbacks();
+
+	static
+	OB_PREOP_CALLBACK_STATUS
+		ProcessPreOperationCallback(
+			PVOID RegistrationContext,
+			POB_PRE_OPERATION_INFORMATION OperationInformation
+		);
+
+	static
+	OB_PREOP_CALLBACK_STATUS
+		ThreadPreOperationCallback(
+			PVOID RegistrationContext,
+			POB_PRE_OPERATION_INFORMATION OperationInformation);
+
+private:
+	// ObRegisterCallbacks
+	HANDLE		m_hObRegisterCallbacks{ nullptr };
+	BOOLEAN		m_bObjectRegisterCreated{ FALSE };
+};

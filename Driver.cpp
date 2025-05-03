@@ -1,7 +1,6 @@
 #include "ApcInjector.hpp"
 #include "Utils.hpp"
 #include "Notify.hpp"
-#include "New.hpp"
 #include "ProcessProtector.hpp"
 
 
@@ -79,7 +78,8 @@ DriverUnload(PDRIVER_OBJECT DriverObject)
 	Notify::getInstance()->FinalizedNotifys();
 	delete Notify::getInstance();
 
-	FinalizeObRegisterCallbacks();
+	ProcessProtector::getInstance()->FinalizeObRegisterCallbacks();
+	delete ProcessProtector::getInstance();
 
 	if (g_pGlobalData)
 	{
@@ -181,8 +181,7 @@ DriverEntry(
 
 	Notify::getInstance()->InitializedNotifys();
 
-	InitializeObRegisterCallbacks();
-
+	ProcessProtector::getInstance()->InitializeObRegisterCallbacks();
 
 	return status;
 }

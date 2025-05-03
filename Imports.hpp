@@ -423,11 +423,7 @@ struct  GlobalData
 	PPsGetProcessWow64Process				PsGetProcessWow64Process	= nullptr;
 	PPsWrapApcWow64Thread					PsWrapApcWow64Thread		= nullptr;
 
-	// ObRegisterCallbacks
-	HANDLE									hObRegisterCallbacks		= nullptr;		// ObRegisterCallback句柄
-	BOOLEAN									bObjectRegisterCreated{ FALSE };			// ObRegisterCallback创建标记
-
-
+	
 	PfnZwTerminateProcess					ZwTerminateProcess			= nullptr;
 
 

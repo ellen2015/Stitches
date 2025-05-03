@@ -19,16 +19,10 @@ extern GlobalData* g_pGlobalData;
 #define PROCESS_QUERY_LIMITED_INFORMATION  (0x1000)  
 #define PROCESS_SET_LIMITED_INFORMATION    (0x2000)  
 
-#if defined(ALLOC_PRAGMA)
 
-#pragma alloc_text(PAGE, InitializeObRegisterCallbacks)
-#pragma alloc_text(PAGE, FinalizeObRegisterCallbacks)
 
-#endif
-
-static
 OB_PREOP_CALLBACK_STATUS
-ProcessPreOperationCallback(
+ProcessProtector::ProcessPreOperationCallback(
 	PVOID RegistrationContext,
 	POB_PRE_OPERATION_INFORMATION OperationInformation
 )
@@ -36,8 +30,7 @@ ProcessPreOperationCallback(
 	UNREFERENCED_PARAMETER(RegistrationContext);
 
 	// 没有开启进程保护
-	if (!g_pGlobalData->bObjectRegisterCreated ||
-		KeGetCurrentIrql() > PASSIVE_LEVEL)
+	if (KeGetCurrentIrql() > PASSIVE_LEVEL)
 	{
 		return OB_PREOP_SUCCESS;
 	}
@@ -189,9 +182,9 @@ ProcessPreOperationCallback(
 	return OB_PREOP_SUCCESS;
 }
 
-static
+
 OB_PREOP_CALLBACK_STATUS
-ThreadPreOperationCallback(
+ProcessProtector::ThreadPreOperationCallback(
 	PVOID RegistrationContext,
 	POB_PRE_OPERATION_INFORMATION OperationInformation
 )
@@ -269,7 +262,7 @@ ThreadPreOperationCallback(
 
 
 NTSTATUS 
-InitializeObRegisterCallbacks()
+ProcessProtector::InitializeObRegisterCallbacks()
 {
 	NTSTATUS status{ STATUS_UNSUCCESSFUL };
 
@@ -280,7 +273,7 @@ InitializeObRegisterCallbacks()
 
 	do
 	{
-		if (g_pGlobalData->bObjectRegisterCreated)
+		if (m_bObjectRegisterCreated)
 		{
 			status = STATUS_SUCCESS;
 			break;
@@ -301,10 +294,10 @@ InitializeObRegisterCallbacks()
 		stObCbReg.OperationRegistration = stObOpReg;
 		RtlInitUnicodeString(&stObCbReg.Altitude, L"1000");
 
-		status = ObRegisterCallbacks(&stObCbReg, &g_pGlobalData->hObRegisterCallbacks);
+		status = ObRegisterCallbacks(&stObCbReg, &m_hObRegisterCallbacks);
 		if (NT_SUCCESS(status))
 		{
-			g_pGlobalData->bObjectRegisterCreated = TRUE;
+			m_bObjectRegisterCreated = TRUE;
 			LOGINFO("bObjectRegisterCreated create success\r\n");
 		}
 
@@ -315,18 +308,18 @@ InitializeObRegisterCallbacks()
 }
 
 VOID 
-FinalizeObRegisterCallbacks()
+ProcessProtector::FinalizeObRegisterCallbacks()
 {
-	if ( !g_pGlobalData || !g_pGlobalData->bObjectRegisterCreated)
+	if (!m_bObjectRegisterCreated)
 	{
 		return;
 	}
 
-	if (g_pGlobalData->hObRegisterCallbacks)
+	if (m_hObRegisterCallbacks)
 	{
-		ObUnRegisterCallbacks(g_pGlobalData->hObRegisterCallbacks);
-		g_pGlobalData->hObRegisterCallbacks = nullptr;
+		ObUnRegisterCallbacks(m_hObRegisterCallbacks);
+		m_hObRegisterCallbacks = nullptr;
 	}
 
-	g_pGlobalData->bObjectRegisterCreated = FALSE;
+	m_bObjectRegisterCreated = FALSE;
 }
