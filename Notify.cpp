@@ -271,6 +271,12 @@ ThreadNotify::ThreadNotifyRoutine(
 
 	if (Create)
 	{
+		if (LongToHandle(4) >= PsGetCurrentProcessId())
+		{
+			return;
+		}
+
+
 		// 这里需要注意  还是需要配合进程上下文使用
 		// 因为这样的判断会导致 父进程创建子进程的情况
 		// 最好是判断父进程pid是否和processid相等的情况

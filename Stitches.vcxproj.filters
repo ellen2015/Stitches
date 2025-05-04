@@ -57,6 +57,9 @@
     <ClInclude Include="Singleton.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="FileFilter.hpp">
+      <Filter>Monitor</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ApcInjector.cpp">
@@ -79,6 +82,9 @@
     </ClCompile>
     <ClCompile Include="New.cpp">
       <Filter>KernelStl</Filter>
+    </ClCompile>
+    <ClCompile Include="FileFilter.cpp">
+      <Filter>Monitor</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>
