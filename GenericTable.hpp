@@ -155,7 +155,6 @@ NTSTATUS GenericTable<T, _Compare>::AddElement(T& Data)
 	else
 	{
 #ifdef DBG
-		//DbgBreakPoint();
 		DbgPrint("Element was existed \r\n");
 
 #endif

@@ -2,9 +2,10 @@
 #include "Utils.hpp"
 #include "Notify.hpp"
 #include "ProcessProtector.hpp"
+#include "FileFilter.hpp"
 
 
-HANDLE g_hFile {nullptr};
+HANDLE g_hFile{ nullptr };
 
 GlobalData* g_pGlobalData;
 
@@ -12,7 +13,7 @@ VOID
 InitSystemFucAddr()
 {
 	UNICODE_STRING ustrPsIsProtectedProcess{};
-	RtlInitUnicodeString(&ustrPsIsProtectedProcess, L"PsIsProtectedProcess");	
+	RtlInitUnicodeString(&ustrPsIsProtectedProcess, L"PsIsProtectedProcess");
 	g_pGlobalData->PsIsProtectedProcess = reinterpret_cast<PPsIsProtectedProcess>(MmGetSystemRoutineAddress(&ustrPsIsProtectedProcess));
 
 	UNICODE_STRING ustrPsIsProtectedProcessLight{};
@@ -34,12 +35,12 @@ InitSystemFucAddr()
 	RtlUnicodeStringInit(&ustrPsSetCreateProcessNotifyRoutine, L"PsSetCreateProcessNotifyRoutineEx2");
 
 	g_pGlobalData->pfnPsSetCreateProcessNotifyRoutineEx2 = reinterpret_cast<PfnPsSetCreateProcessNotifyRoutineEx2>(MmGetSystemRoutineAddress(&ustrPsSetCreateProcessNotifyRoutine));
-	
+
 
 #else
 	RtlUnicodeStringInit(&ustrPsSetCreateProcessNotifyRoutine, L"PsSetCreateProcessNotifyRoutineEx");
 	g_pGlobalData->pfnPsSetCreateProcessNotifyRoutineEx = reinterpret_cast<PfnPsSetCreateProcessNotifyRoutineEx>(MmGetSystemRoutineAddress(&ustrPsSetCreateProcessNotifyRoutine));
-	
+
 #endif
 
 }
@@ -67,38 +68,6 @@ VOID
 DriverUnload(PDRIVER_OBJECT DriverObject)
 {
 	UNREFERENCED_PARAMETER(DriverObject);
-
-	if (g_hFile)
-	{
-		ZwClose(g_hFile);
-		g_hFile = nullptr;
-	}
-
-	
-	Notify::getInstance()->FinalizedNotifys();
-	delete Notify::getInstance();
-
-	ProcessProtector::getInstance()->FinalizeObRegisterCallbacks();
-	delete ProcessProtector::getInstance();
-
-	if (g_pGlobalData)
-	{
-
-		if (g_pGlobalData->InjectDllx64.Buffer)
-		{
-			ExFreePoolWithTag(g_pGlobalData->InjectDllx64.Buffer, GLOBALDATA_TAG);
-			g_pGlobalData->InjectDllx64.Buffer = nullptr;
-		}
-		if (g_pGlobalData->InjectDllx86.Buffer)
-		{
-			ExFreePoolWithTag(g_pGlobalData->InjectDllx86.Buffer, GLOBALDATA_TAG);
-			g_pGlobalData->InjectDllx86.Buffer = nullptr;
-		}
-
-
-		delete g_pGlobalData;
-		g_pGlobalData = nullptr;
-	}
 }
 
 NTSTATUS
@@ -120,6 +89,8 @@ DriverEntry(
 		return STATUS_NO_MEMORY;
 	}
 	RtlZeroMemory(g_pGlobalData, sizeof(GlobalData));
+
+	g_pGlobalData->pDriverObject = DriverObject;
 
 	DriverObject->DriverUnload = DriverUnload;
 	status = InitializeLogFile(L"\\??\\C:\\desktop\\Log.txt");
@@ -183,5 +154,11 @@ DriverEntry(
 
 	ProcessProtector::getInstance()->InitializeObRegisterCallbacks();
 
+	status = FileFilter::getInstance()->IntializedFileFilter();
+	if (NT_SUCCESS(status))
+	{
+		FileFilter::getInstance()->AddProtectFilePath(L"*\\PROTECTFILE\\*");
+	}
+	
 	return status;
 }
