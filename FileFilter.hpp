@@ -105,7 +105,6 @@ public:
 
 	BOOLEAN IsInTable(IN PUNICODE_STRING FilePath)
 	{
-		DbgBreakPoint();
 		ProtectFile filePath{};
 		RtlZeroMemory(&filePath, sizeof(filePath));
 		if (FilePath->Length < MAX_PATH)

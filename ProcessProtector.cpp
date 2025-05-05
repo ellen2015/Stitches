@@ -152,7 +152,6 @@ ProcessProtector::ProcessPreOperationCallback(
 		// testing
 		if (UnicodeStringContains(pTargetProcessPath, L"notepad.exe"))
 		{
-			//DbgBreakPoint();
 			*pDesiredAccess &= ~PROCESS_TERMINATE;
 
 			LOGINFO("[Protected] %ws kill %ws\r\n ", pCurrentProcessPath->Buffer, pTargetProcessPath->Buffer);

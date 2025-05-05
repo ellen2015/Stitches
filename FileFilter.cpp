@@ -2,9 +2,11 @@
 #include "FileFilter.hpp"
 #include "Log.hpp"
 #include "New.hpp"
+#include "Notify.hpp"
+#include "ProcessProtector.hpp"
 
 extern GlobalData* g_pGlobalData;
-
+extern HANDLE g_hFile;
 
 static
 NTSTATUS 
@@ -15,8 +17,43 @@ UnloadFilter(IN FLT_FILTER_UNLOAD_FLAGS Flags)
 {
 	UNREFERENCED_PARAMETER(Flags);
 
+	if (g_hFile)
+	{
+		ZwClose(g_hFile);
+		g_hFile = nullptr;
+	}
+
+
+	Notify::getInstance()->FinalizedNotifys();
+	delete Notify::getInstance();
+
+	ProcessProtector::getInstance()->FinalizeObRegisterCallbacks();
+	delete ProcessProtector::getInstance();
+
+
 	FileFilter::getInstance()->FinalizedFileFilter();
 	delete FileFilter::getInstance();
+
+
+	if (g_pGlobalData)
+	{
+
+		if (g_pGlobalData->InjectDllx64.Buffer)
+		{
+			ExFreePoolWithTag(g_pGlobalData->InjectDllx64.Buffer, GLOBALDATA_TAG);
+			g_pGlobalData->InjectDllx64.Buffer = nullptr;
+		}
+		if (g_pGlobalData->InjectDllx86.Buffer)
+		{
+			ExFreePoolWithTag(g_pGlobalData->InjectDllx86.Buffer, GLOBALDATA_TAG);
+			g_pGlobalData->InjectDllx86.Buffer = nullptr;
+		}
+
+
+		delete g_pGlobalData;
+		g_pGlobalData = nullptr;
+	}
+
 
 	return STATUS_SUCCESS;
 }
@@ -81,7 +118,6 @@ CheckEspListHasKernelGuid(
 	return TRUE;
 }
 
-static
 BOOLEAN
 IsUSBDevice(IN CONST InstanceContext* InstanceContext)
 {
@@ -167,7 +203,6 @@ IsDeleteAllowed(PCUNICODE_STRING Filename)
 
 	if (bFind)
 	{
-		//DbgBreakPoint();
 		return FALSE;
 	}
 	
@@ -185,7 +220,6 @@ IsDeleteAllowed(PCUNICODE_STRING Filename)
 // Parameter: ULONG CreateOptions
 // 根据创建文件时的相应参数过滤文件
 //************************************
-static
 BOOLEAN
 IsNeedFilter(
 	ACCESS_MASK        DesiredAccess,
@@ -243,7 +277,6 @@ IsNeedFilter(
 // Parameter: PCFLT_RELATED_OBJECTS FltObjects
 // Pre Create 中处理验证是否删除保护文件
 //************************************
-static
 FLT_PREOP_CALLBACK_STATUS
 FLTAPI
 DelProtectPreCreate(
@@ -323,7 +356,6 @@ DelProtectPreCreate(
 // Parameter: PCFLT_RELATED_OBJECTS FltObjects
 // Pre SetFileInformation 中调用处理不允许删除或者重命名保护文件
 //************************************
-static
 FLT_PREOP_CALLBACK_STATUS
 FileProtectPreSetFileInformation(
 	PFLT_CALLBACK_DATA Data,
@@ -397,7 +429,6 @@ FileProtectPreSetFileInformation(
 // Parameter: _In_ PCFLT_RELATED_OBJECTS FltObjects
 // Parameter: _Flt_CompletionContext_Outptr_ PVOID * CompletionContext
 //************************************
-static
 FLT_PREOP_CALLBACK_STATUS
 FLTAPI
 FltPreCreate(
@@ -461,10 +492,14 @@ FltPreRead(
 				Data->IoStatus.Status = STATUS_ACCESS_DENIED;
 				Data->IoStatus.Information = 0;
 
+				FltReleaseContext(InstanceContext);
+
 				// 修改了文件
 				FltSetCallbackDataDirty(Data);
 				return FLT_PREOP_COMPLETE;
 			}
+
+			FltReleaseContext(InstanceContext);
 		}
 
 	}
@@ -514,11 +549,14 @@ FltPreWrite(
 			// 这里后期需要添加验证是否是白名单进程进行操作
 			if (IsUSBDevice(InstanceContext))
 			{
+				FltReleaseContext(InstanceContext);
 				Data->IoStatus.Status = STATUS_ACCESS_DENIED;
 				Data->IoStatus.Information = 0;
 				FltSetCallbackDataDirty(Data);
 				return FLT_PREOP_COMPLETE;
 			}
+
+			FltReleaseContext(InstanceContext);
 		}
 	}
 
@@ -536,7 +574,6 @@ FltPreWrite(
 // Parameter: _In_ PCFLT_RELATED_OBJECTS FltObjects
 // Parameter: _Flt_CompletionContext_Outptr_ PVOID * CompletionContext
 //************************************
-static
 FLT_PREOP_CALLBACK_STATUS
 FLTAPI
 FltPreSetFileInformation(
@@ -561,9 +598,6 @@ FltPreSetFileInformation(
 	return FLT_PREOP_SUCCESS_NO_CALLBACK;
 }
 
-
-
-static
 NTSTATUS
 FLTAPI
 InstanceSetupCallback(
@@ -640,11 +674,10 @@ InstanceSetupCallback(
 
 			// 设置
 			status = FltSetInstanceContext(FltObjects->Instance, FLT_SET_CONTEXT_KEEP_IF_EXISTS, pInstanceContext, nullptr);
-			if (!NT_SUCCESS(status))
-			{
-				FltDeleteContext(pInstanceContext);
-				break;
-			}
+			
+			// Always release the context, regardless of FltSetInstanceContext.
+			// If FltSetInstanceContext succeeds, it takes a reference, and if
+			// it fails, FltReleaseContext will delete the context.
 			FltReleaseContext(pInstanceContext);
 		}
 

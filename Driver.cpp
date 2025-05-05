@@ -68,40 +68,6 @@ VOID
 DriverUnload(PDRIVER_OBJECT DriverObject)
 {
 	UNREFERENCED_PARAMETER(DriverObject);
-
-	if (g_hFile)
-	{
-		ZwClose(g_hFile);
-		g_hFile = nullptr;
-	}
-
-
-	Notify::getInstance()->FinalizedNotifys();
-	delete Notify::getInstance();
-
-	ProcessProtector::getInstance()->FinalizeObRegisterCallbacks();
-	delete ProcessProtector::getInstance();
-
-	
-
-	if (g_pGlobalData)
-	{
-
-		if (g_pGlobalData->InjectDllx64.Buffer)
-		{
-			ExFreePoolWithTag(g_pGlobalData->InjectDllx64.Buffer, GLOBALDATA_TAG);
-			g_pGlobalData->InjectDllx64.Buffer = nullptr;
-		}
-		if (g_pGlobalData->InjectDllx86.Buffer)
-		{
-			ExFreePoolWithTag(g_pGlobalData->InjectDllx86.Buffer, GLOBALDATA_TAG);
-			g_pGlobalData->InjectDllx86.Buffer = nullptr;
-		}
-
-
-		delete g_pGlobalData;
-		g_pGlobalData = nullptr;
-	}
 }
 
 NTSTATUS
