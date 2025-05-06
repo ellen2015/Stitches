@@ -140,10 +140,19 @@
     <ClCompile>
       <PreprocessorDefinitions>POOL_ZERO_DOWN_LEVEL_SUPPORT;POOL_NX_OPTIN=1;NDIS60;NDIS_SUPPORT_NDIS6;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <TreatWarningAsError>true</TreatWarningAsError>
-      <LanguageStandard>Default</LanguageStandard>
+      <LanguageStandard>stdcpp14</LanguageStandard>
     </ClCompile>
     <Link>
       <AdditionalOptions>/integritycheck %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalDependencies>fltmgr.lib;ksecdd.lib;WDMSec.lib;UUID.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <DisableSpecificWarnings>4702;4603;4627;4986;4987;%(DisableSpecificWarnings)</DisableSpecificWarnings>
+      <PreprocessorDefinitions>POOL_ZERO_DOWN_LEVEL_SUPPORT;POOL_NX_OPTIN=1;NDIS60;NDIS_SUPPORT_NDIS6;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <Link>
       <AdditionalDependencies>fltmgr.lib;ksecdd.lib;WDMSec.lib;UUID.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
