@@ -150,14 +150,14 @@ DriverEntry(
 	InitSystemFucAddr();
 
 
-	Notify::getInstance()->InitializedNotifys();
+	NOTIFY_INIT();
 
-	ProcessProtector::getInstance()->InitializeObRegisterCallbacks();
+	PROCESS_PROTECTOR_INIT();
 
-	status = FileFilter::getInstance()->IntializedFileFilter();
+	status = FILEFILTER_INIT();
 	if (NT_SUCCESS(status))
 	{
-		FileFilter::getInstance()->AddProtectFilePath(L"*\\PROTECTFILE\\*");
+		FILEFILTER_ADD_PROTECT_PATH(L"*\\PROTECTFILE\\*");
 	}
 	
 	return status;

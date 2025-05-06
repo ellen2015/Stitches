@@ -124,3 +124,11 @@ public:
 private:
 	GenericTable<ProtectFile, _CompareProtectFile>* m_tableOfProtectFile;
 };
+
+// Syntax sugar
+#define FILEFILTER()					(FileFilter::getInstance())
+#define FILEFILTER_INIT()				(FileFilter::getInstance()->IntializedFileFilter())
+#define FILEFILTER_DESTROY()			(FileFilter::getInstance()->FinalizedFileFilter())
+#define FILEFILTER_ADD_PROTECT_PATH(x)	(FileFilter::getInstance()->AddProtectFilePath(x))
+#define FILEFILTER_DEL_PROTECT_PATH(x)	(FileFilter::getInstance()->DelProtectFilePath(x))
+#define FILEFILTER_IN_TABLE(x)			(FileFilter::getInstance()->IsInTable(x))

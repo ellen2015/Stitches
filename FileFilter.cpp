@@ -24,16 +24,14 @@ UnloadFilter(IN FLT_FILTER_UNLOAD_FLAGS Flags)
 	}
 
 
-	Notify::getInstance()->FinalizedNotifys();
-	delete Notify::getInstance();
+	NOTIFY_DESTROY();
+	delete NOTIFY();
 
-	ProcessProtector::getInstance()->FinalizeObRegisterCallbacks();
-	delete ProcessProtector::getInstance();
+	PROCESS_PROTECTOR_DESTROY();
+	delete PROCESS_PROTECTOR();
 
-
-	FileFilter::getInstance()->FinalizedFileFilter();
-	delete FileFilter::getInstance();
-
+	FILEFILTER_DESTROY();
+	delete FILEFILTER();
 
 	if (g_pGlobalData)
 	{

@@ -30,3 +30,8 @@ private:
 	HANDLE		m_hObRegisterCallbacks{ nullptr };
 	BOOLEAN		m_bObjectRegisterCreated{ FALSE };
 };
+
+// Syntax sugar
+#define PROCESS_PROTECTOR()			(ProcessProtector::getInstance())
+#define PROCESS_PROTECTOR_INIT()	(ProcessProtector::getInstance()->InitializeObRegisterCallbacks())
+#define PROCESS_PROTECTOR_DESTROY() (ProcessProtector::getInstance()->FinalizeObRegisterCallbacks())
