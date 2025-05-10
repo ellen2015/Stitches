@@ -60,6 +60,9 @@
     <ClInclude Include="FileFilter.hpp">
       <Filter>Monitor</Filter>
     </ClInclude>
+    <ClInclude Include="ProcessCtx.hpp">
+      <Filter>Monitor</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ApcInjector.cpp">
@@ -84,6 +87,9 @@
       <Filter>KernelStl</Filter>
     </ClCompile>
     <ClCompile Include="FileFilter.cpp">
+      <Filter>Monitor</Filter>
+    </ClCompile>
+    <ClCompile Include="ProcessCtx.cpp">
       <Filter>Monitor</Filter>
     </ClCompile>
   </ItemGroup>

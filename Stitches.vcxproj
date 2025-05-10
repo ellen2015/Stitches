@@ -144,7 +144,7 @@
     </ClCompile>
     <Link>
       <AdditionalOptions>/integritycheck %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalDependencies>fltmgr.lib;ksecdd.lib;WDMSec.lib;UUID.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>fltmgr.lib;fwpkclnt.lib;NetIO.lib;ndis.lib;ksecdd.lib;WDMSec.lib;UUID.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -169,6 +169,7 @@
     <ClCompile Include="New.cpp" />
     <ClInclude Include="New.hpp" />
     <ClInclude Include="Notify.hpp" />
+    <ClInclude Include="ProcessCtx.hpp" />
     <ClInclude Include="ProcessProtector.hpp" />
     <ClInclude Include="Singleton.hpp" />
     <ClInclude Include="Utils.hpp" />
@@ -178,6 +179,7 @@
     <ClCompile Include="Driver.cpp" />
     <ClCompile Include="Log.cpp" />
     <ClCompile Include="Notify.cpp" />
+    <ClCompile Include="ProcessCtx.cpp" />
     <ClCompile Include="ProcessProtector.cpp" />
     <ClCompile Include="Utils.cpp" />
   </ItemGroup>

@@ -3,6 +3,7 @@
 #include "Log.hpp"
 #include "New.hpp"
 #include "Notify.hpp"
+#include "ProcessCtx.hpp"
 #include "ProcessProtector.hpp"
 
 extern GlobalData* g_pGlobalData;
@@ -23,6 +24,9 @@ UnloadFilter(IN FLT_FILTER_UNLOAD_FLAGS Flags)
 		g_hFile = nullptr;
 	}
 
+	PROCESS_CTX_CLEAR();
+	ExDeleteNPagedLookasideList(&g_pGlobalData->ProcessCtxNPList);
+	delete PROCESS_CTX_INSTANCE();
 
 	NOTIFY_DESTROY();
 	delete NOTIFY();
