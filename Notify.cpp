@@ -1,229 +1,9 @@
 ﻿#include "Notify.hpp"
+#include "ProcessCtx.hpp"
 #include "ApcInjector.hpp"
 #include "Log.hpp"
 
 extern GlobalData* g_pGlobalData;
-
-struct ProcessContext
-{
-	LIST_ENTRY		ListHeader;
-	HANDLE			Pid;
-	UNICODE_STRING	ProcessPath;
-	UNICODE_STRING	ProcessCmdLine;
-	BOOLEAN			bProtected;
-	BOOLEAN			bIsWow64;
-};
-
-constexpr ULONG ProcessContextSize	= sizeof(ProcessContext);
-constexpr ULONG ProcessContextTag	= 'pnCP';
-
-
-VOID InitializedProcessContext()
-{
-	ExInitializeNPagedLookasideList(&g_pGlobalData->ProcessCtxNPList,
-		nullptr,
-		nullptr,
-		0,
-		ProcessContextSize,
-		ProcessContextTag,
-		0);
-
-	InitializeListHead(&g_pGlobalData->ProcessCtxList);
-	ExInitializeFastMutex(&g_pGlobalData->ProcessCtxFastMutex);
-}
-
-static
-VOID
-AddProcessContext(
-	IN CONST			PEPROCESS	Process,
-	IN CONST			HANDLE		Pid, 
-	IN OUT OPTIONAL		PPS_CREATE_NOTIFY_INFO CreateInfo)
-{
-	ProcessContext* pProcessCtx = reinterpret_cast<ProcessContext*>(ExAllocateFromNPagedLookasideList(&g_pGlobalData->ProcessCtxNPList));
-	if (!pProcessCtx)
-	{
-		LOGERROR(STATUS_INSUFFICIENT_RESOURCES, "ExAllocateFromNPagedLookasideList");
-		return;
-	}
-	RtlZeroMemory(pProcessCtx, ProcessContextSize);
-
-	pProcessCtx->Pid = Pid;
-	pProcessCtx->bProtected = IsProtectedProcess(Process);
-
-	if (g_pGlobalData->PsGetProcessWow64Process)
-	{
-		pProcessCtx->bIsWow64 = (g_pGlobalData->PsGetProcessWow64Process(Process) != nullptr);
-	}
-
-	do 
-	{
-		// process image file name
-		pProcessCtx->ProcessPath.Buffer = reinterpret_cast<PWCH>(ExAllocatePoolWithTag(PagedPool, CreateInfo->ImageFileName->MaximumLength + sizeof(UNICODE_STRING), ProcessContextTag));
-		if (pProcessCtx->ProcessPath.Buffer)
-		{
-			RtlZeroMemory(pProcessCtx->ProcessPath.Buffer, CreateInfo->ImageFileName->MaximumLength + sizeof(UNICODE_STRING));
-			pProcessCtx->ProcessPath.Length = 0;
-			pProcessCtx->ProcessPath.MaximumLength = CreateInfo->ImageFileName->MaximumLength;
-			RtlCopyUnicodeString(&pProcessCtx->ProcessPath, CreateInfo->ImageFileName);
-		}
-		else
-		{
-			LOGERROR(STATUS_INSUFFICIENT_RESOURCES, "ProcessCtx ProcessPath buffer alloc failed\r\n");
-			break;
-		}
-
-
-		// process commandline
-		pProcessCtx->ProcessCmdLine.Buffer = reinterpret_cast<PWCH>(ExAllocatePoolWithTag(PagedPool, CreateInfo->CommandLine->MaximumLength + sizeof(UNICODE_STRING), ProcessContextTag));
-		if (pProcessCtx->ProcessCmdLine.Buffer)
-		{
-			RtlZeroMemory(pProcessCtx->ProcessCmdLine.Buffer, CreateInfo->CommandLine->MaximumLength + sizeof(UNICODE_STRING));
-			pProcessCtx->ProcessCmdLine.Length = 0;
-			pProcessCtx->ProcessCmdLine.MaximumLength = CreateInfo->CommandLine->MaximumLength;
-			RtlCopyUnicodeString(&pProcessCtx->ProcessCmdLine, CreateInfo->CommandLine);
-		}
-		else
-		{
-			LOGERROR(STATUS_INSUFFICIENT_RESOURCES, "ProcessCtx cmdline buffer alloc failed\r\n");
-			break;
-		}
-
-		
-		ExAcquireFastMutex(&g_pGlobalData->ProcessCtxFastMutex);
-
-		InsertHeadList(&g_pGlobalData->ProcessCtxList, &pProcessCtx->ListHeader);
-
-		ExReleaseFastMutex(&g_pGlobalData->ProcessCtxFastMutex);
-
-		return;
-	} while (FALSE);
-
-
-	// failed 
-	if (pProcessCtx->ProcessPath.Buffer)
-	{
-		ExFreePoolWithTag(pProcessCtx->ProcessPath.Buffer, ProcessContextTag);
-		pProcessCtx->ProcessPath.Buffer = nullptr;
-	}
-
-
-	ExFreeToNPagedLookasideList(&g_pGlobalData->ProcessCtxNPList, pProcessCtx);
-
-}
-
-static
-VOID
-DeleteProcessCtxByPid(IN CONST HANDLE ProcessId)
-{
-	if (!ProcessId || IsListEmpty(&g_pGlobalData->ProcessCtxList))
-	{
-		return;
-	}
-
-	PLIST_ENTRY pEntry = g_pGlobalData->ProcessCtxList.Flink;
-
-	while (pEntry != &g_pGlobalData->ProcessCtxList)
-	{
-		ProcessContext* pNode = CONTAINING_RECORD(pEntry, ProcessContext, ListHeader);
-		if (pNode)
-		{
-			if (ProcessId == pNode->Pid)
-			{
-				if (pNode->ProcessPath.Buffer)
-				{
-					ExFreePoolWithTag(pNode->ProcessPath.Buffer, ProcessContextTag);
-					pNode->ProcessPath.Buffer = nullptr;
-				}
-
-				if (pNode->ProcessCmdLine.Buffer)
-				{
-					ExFreePoolWithTag(pNode->ProcessCmdLine.Buffer, ProcessContextTag);
-					pNode->ProcessCmdLine.Buffer = nullptr;
-				}
-
-				ExAcquireFastMutex(&g_pGlobalData->ProcessCtxFastMutex);
-
-				RemoveEntryList(&pNode->ListHeader);
-
-				ExReleaseFastMutex(&g_pGlobalData->ProcessCtxFastMutex);
-
-
-				ExFreeToNPagedLookasideList(&g_pGlobalData->ProcessCtxNPList, pNode);
-
-				break;
-			}
-		}
-		if (pEntry)
-		{
-			pEntry = pEntry->Flink;
-		}	
-	}
-}
-
-ProcessContext*
-FindProcessCtxByPid( IN CONST HANDLE Pid)
-{
-	if (!Pid || IsListEmpty(&g_pGlobalData->ProcessCtxList))
-	{
-		return nullptr;
-	}
-
-	ProcessContext*		pNode{ nullptr };
-	PLIST_ENTRY			pEntry = g_pGlobalData->ProcessCtxList.Flink;
-
-	ExAcquireFastMutex(&g_pGlobalData->ProcessCtxFastMutex);
-
-	while (pEntry != &g_pGlobalData->ProcessCtxList)
-	{
-		pNode = CONTAINING_RECORD(pEntry, ProcessContext, ListHeader);
-		if (pNode && (Pid == pNode->Pid))
-		{
-			ExReleaseFastMutex(&g_pGlobalData->ProcessCtxFastMutex);
-			return pNode;
-		}
-
-		pEntry = pEntry->Flink;
-	}
-
-	ExReleaseFastMutex(&g_pGlobalData->ProcessCtxFastMutex);
-
-	return pNode;
-}
-
-static
-VOID
-CleanupProcessCtxList()
-{
-	while (!IsListEmpty(&g_pGlobalData->ProcessCtxList))
-	{
-		PLIST_ENTRY pEntry = g_pGlobalData->ProcessCtxList.Flink;
-		ProcessContext* pNode = CONTAINING_RECORD(pEntry, ProcessContext, ListHeader);
-		if (pNode)
-		{
-
-			if (pNode->ProcessPath.Buffer)
-			{
-				ExFreePoolWithTag(pNode->ProcessPath.Buffer, ProcessContextTag);
-				pNode->ProcessPath.Buffer = nullptr;
-			}
-
-			if (pNode->ProcessCmdLine.Buffer)
-			{
-				ExFreePoolWithTag(pNode->ProcessCmdLine.Buffer, ProcessContextTag);
-				pNode->ProcessCmdLine.Buffer = nullptr;
-			}
-
-			ExAcquireFastMutex(&g_pGlobalData->ProcessCtxFastMutex);
-
-			RemoveEntryList(&pNode->ListHeader);
-
-			ExReleaseFastMutex(&g_pGlobalData->ProcessCtxFastMutex);
-			
-			ExFreeToNPagedLookasideList(&g_pGlobalData->ProcessCtxNPList, pNode);
-		}
-	}
-}
-
 
 NTSTATUS 
 ThreadNotify::InitializeThreadNotify()
@@ -372,12 +152,12 @@ ProcessNotify::ProcessNotifyRoutine(
 				return;
 			}
 
-			AddProcessContext(Process, ProcessId, CreateInfo);
+			PROCESS_CTX_ADD(Process, ProcessId, CreateInfo);
 		}
 	}
 	else
 	{
-		DeleteProcessCtxByPid(ProcessId);
+		PROCESS_CTX_DEL(ProcessId);
 	}
 }
 
@@ -425,7 +205,7 @@ ImageNotify::ImageNotifyRoutine(
 
 
 	ProcessContext* pProcessContext{ nullptr };
-	pProcessContext = FindProcessCtxByPid(ProcessId);
+	pProcessContext = PROCESS_CTX_FIND(ProcessId);
 	if (pProcessContext)
 	{
 
@@ -485,7 +265,7 @@ ImageNotify::ImageNotifyRoutine(
 
 VOID Notify::InitializedNotifys()
 {
-	InitializedProcessContext();
+	PROCESS_CTX_INIT();
 
 	m_ProcessNotify.InitializeProcessNotify();
 	m_ThreadNotify.InitializeThreadNotify();
@@ -495,10 +275,6 @@ VOID Notify::InitializedNotifys()
 VOID
 Notify::FinalizedNotifys()
 {
-	CleanupProcessCtxList();
-
-	ExDeleteNPagedLookasideList(&g_pGlobalData->ProcessCtxNPList);
-
 	if (m_ImageNotify.m_bInitialized)
 	{
 		m_ImageNotify.FinalizedImageNotify();
