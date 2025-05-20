@@ -90,3 +90,7 @@ private:
 	ImageNotify		m_ImageNotify;
 };
 
+// Syntax sugar
+#define NOTIFY()			(Notify::getInstance())
+#define NOTIFY_INIT()		(Notify::getInstance()->InitializedNotifys())
+#define NOTIFY_DESTROY()	(Notify::getInstance()->FinalizedNotifys())

@@ -1,0 +1,2 @@
+#define STITCHESAPI_API __declspec(dllexport)
+#define STITCHESAPI_API __declspec(dllimport)

@@ -120,9 +120,12 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <DebuggerFlavor>DbgengKernelDebugger</DebuggerFlavor>
+    <ExternalIncludePath>$(ExternalIncludePath)</ExternalIncludePath>
+    <IncludePath>.\Common\;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <DebuggerFlavor>DbgengKernelDebugger</DebuggerFlavor>
+    <IncludePath>.\Common\;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM'">
     <DebuggerFlavor>DbgengKernelDebugger</DebuggerFlavor>
@@ -140,10 +143,19 @@
     <ClCompile>
       <PreprocessorDefinitions>POOL_ZERO_DOWN_LEVEL_SUPPORT;POOL_NX_OPTIN=1;NDIS60;NDIS_SUPPORT_NDIS6;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <TreatWarningAsError>true</TreatWarningAsError>
-      <LanguageStandard>Default</LanguageStandard>
+      <LanguageStandard>stdcpp14</LanguageStandard>
     </ClCompile>
     <Link>
       <AdditionalOptions>/integritycheck %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalDependencies>fltmgr.lib;fwpkclnt.lib;NetIO.lib;ndis.lib;ksecdd.lib;WDMSec.lib;UUID.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <DisableSpecificWarnings>4702;4603;4627;4986;4987;%(DisableSpecificWarnings)</DisableSpecificWarnings>
+      <PreprocessorDefinitions>POOL_ZERO_DOWN_LEVEL_SUPPORT;POOL_NX_OPTIN=1;NDIS60;NDIS_SUPPORT_NDIS6;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <Link>
       <AdditionalDependencies>fltmgr.lib;ksecdd.lib;WDMSec.lib;UUID.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
@@ -152,14 +164,20 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ApcInjector.hpp" />
+    <ClInclude Include="Common\Common.h" />
+    <ClInclude Include="DeviceControl.hpp" />
     <ClInclude Include="FileFilter.hpp" />
     <ClInclude Include="GenericTable.hpp" />
     <ClInclude Include="Imports.hpp" />
     <ClInclude Include="Log.hpp" />
+    <ClCompile Include="DeviceControl.cpp" />
     <ClCompile Include="FileFilter.cpp" />
+    <ClCompile Include="NetFilter.cpp" />
     <ClCompile Include="New.cpp" />
+    <ClInclude Include="NetFilter.hpp" />
     <ClInclude Include="New.hpp" />
     <ClInclude Include="Notify.hpp" />
+    <ClInclude Include="ProcessCtx.hpp" />
     <ClInclude Include="ProcessProtector.hpp" />
     <ClInclude Include="Singleton.hpp" />
     <ClInclude Include="Utils.hpp" />
@@ -169,6 +187,7 @@
     <ClCompile Include="Driver.cpp" />
     <ClCompile Include="Log.cpp" />
     <ClCompile Include="Notify.cpp" />
+    <ClCompile Include="ProcessCtx.cpp" />
     <ClCompile Include="ProcessProtector.cpp" />
     <ClCompile Include="Utils.cpp" />
   </ItemGroup>

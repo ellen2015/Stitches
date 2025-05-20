@@ -3,7 +3,10 @@
 #include "Log.hpp"
 #include "New.hpp"
 #include "Notify.hpp"
+#include "ProcessCtx.hpp"
 #include "ProcessProtector.hpp"
+#include "DeviceControl.hpp"
+#include "Common.h"
 
 extern GlobalData* g_pGlobalData;
 extern HANDLE g_hFile;
@@ -17,23 +20,31 @@ UnloadFilter(IN FLT_FILTER_UNLOAD_FLAGS Flags)
 {
 	UNREFERENCED_PARAMETER(Flags);
 
+	UNICODE_STRING ustrDeviceName{};
+	RtlInitUnicodeString(&ustrDeviceName, KERNELDEVICE_DEVICE_NAME);
+	UNICODE_STRING ustrSymbolicLink{};
+	RtlInitUnicodeString(&ustrSymbolicLink, KERNELDEVICE_DEVICE_FILE);
+	DEVICE_CTL_FINALIZED(&ustrDeviceName, &ustrSymbolicLink);
+	delete DEVICE_CTL_INSTANCE();
+
 	if (g_hFile)
 	{
 		ZwClose(g_hFile);
 		g_hFile = nullptr;
 	}
 
+	PROCESS_CTX_CLEAR();
+	ExDeleteNPagedLookasideList(&g_pGlobalData->ProcessCtxNPList);
+	delete PROCESS_CTX_INSTANCE();
 
-	Notify::getInstance()->FinalizedNotifys();
-	delete Notify::getInstance();
+	NOTIFY_DESTROY();
+	delete NOTIFY();
 
-	ProcessProtector::getInstance()->FinalizeObRegisterCallbacks();
-	delete ProcessProtector::getInstance();
+	PROCESS_PROTECTOR_DESTROY();
+	delete PROCESS_PROTECTOR();
 
-
-	FileFilter::getInstance()->FinalizedFileFilter();
-	delete FileFilter::getInstance();
-
+	FILEFILTER_DESTROY();
+	delete FILEFILTER();
 
 	if (g_pGlobalData)
 	{
