@@ -28,6 +28,12 @@
     <Filter Include="KernelStl">
       <UniqueIdentifier>{0f269d4c-5954-4c15-83cf-a29f54bd1a40}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Common">
+      <UniqueIdentifier>{59c1093e-35bb-43e8-83fc-5f4a30cb9423}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Communication">
+      <UniqueIdentifier>{bac85d22-f345-45a8-bb9e-5ddc6ec92db1}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Imports.hpp">
@@ -63,6 +69,15 @@
     <ClInclude Include="ProcessCtx.hpp">
       <Filter>Monitor</Filter>
     </ClInclude>
+    <ClInclude Include="NetFilter.hpp">
+      <Filter>Monitor</Filter>
+    </ClInclude>
+    <ClInclude Include="DeviceControl.hpp">
+      <Filter>Communication</Filter>
+    </ClInclude>
+    <ClInclude Include="Common\Common.h">
+      <Filter>Common</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ApcInjector.cpp">
@@ -91,6 +106,12 @@
     </ClCompile>
     <ClCompile Include="ProcessCtx.cpp">
       <Filter>Monitor</Filter>
+    </ClCompile>
+    <ClCompile Include="NetFilter.cpp">
+      <Filter>Monitor</Filter>
+    </ClCompile>
+    <ClCompile Include="DeviceControl.cpp">
+      <Filter>Communication</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>
