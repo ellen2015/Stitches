@@ -6,5 +6,11 @@
 * APC 内核模式早鸟注入DLL (kernel apc injector(early bird mode))
 * 内核日志实现（kernel log informations）
 * 探针agent
-* 保护protector
+  * 进程回调（获取进程上下文信息）
+  * 线程回调（验证远程线程）
+  * 映像回调（配合APC注入hook dll 监控进程行为）
+  * 对象回调（进程防结束 + 防止非授信进程读取lsass进程）
+* MiniFilter
+  * 文件保护
+  * USB设备管控（待测试...）
 * ...

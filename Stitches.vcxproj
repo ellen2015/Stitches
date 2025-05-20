@@ -172,9 +172,7 @@
     <ClInclude Include="Log.hpp" />
     <ClCompile Include="DeviceControl.cpp" />
     <ClCompile Include="FileFilter.cpp" />
-    <ClCompile Include="NetFilter.cpp" />
     <ClCompile Include="New.cpp" />
-    <ClInclude Include="NetFilter.hpp" />
     <ClInclude Include="New.hpp" />
     <ClInclude Include="Notify.hpp" />
     <ClInclude Include="ProcessCtx.hpp" />

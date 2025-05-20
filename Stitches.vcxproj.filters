@@ -69,9 +69,6 @@
     <ClInclude Include="ProcessCtx.hpp">
       <Filter>Monitor</Filter>
     </ClInclude>
-    <ClInclude Include="NetFilter.hpp">
-      <Filter>Monitor</Filter>
-    </ClInclude>
     <ClInclude Include="DeviceControl.hpp">
       <Filter>Communication</Filter>
     </ClInclude>
@@ -105,9 +102,6 @@
       <Filter>Monitor</Filter>
     </ClCompile>
     <ClCompile Include="ProcessCtx.cpp">
-      <Filter>Monitor</Filter>
-    </ClCompile>
-    <ClCompile Include="NetFilter.cpp">
       <Filter>Monitor</Filter>
     </ClCompile>
     <ClCompile Include="DeviceControl.cpp">
