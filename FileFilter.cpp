@@ -5,6 +5,8 @@
 #include "Notify.hpp"
 #include "ProcessCtx.hpp"
 #include "ProcessProtector.hpp"
+#include "DeviceControl.hpp"
+#include "Common.h"
 
 extern GlobalData* g_pGlobalData;
 extern HANDLE g_hFile;
@@ -17,6 +19,13 @@ NTSTATUS
 UnloadFilter(IN FLT_FILTER_UNLOAD_FLAGS Flags)
 {
 	UNREFERENCED_PARAMETER(Flags);
+
+	UNICODE_STRING ustrDeviceName{};
+	RtlInitUnicodeString(&ustrDeviceName, KERNELDEVICE_DEVICE_NAME);
+	UNICODE_STRING ustrSymbolicLink{};
+	RtlInitUnicodeString(&ustrSymbolicLink, KERNELDEVICE_DEVICE_FILE);
+	DEVICE_CTL_FINALIZED(&ustrDeviceName, &ustrSymbolicLink);
+	delete DEVICE_CTL_INSTANCE();
 
 	if (g_hFile)
 	{

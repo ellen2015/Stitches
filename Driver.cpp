@@ -3,6 +3,8 @@
 #include "Notify.hpp"
 #include "ProcessProtector.hpp"
 #include "FileFilter.hpp"
+#include "DeviceControl.hpp"
+#include "Common.h"
 
 
 HANDLE g_hFile{ nullptr };
@@ -91,6 +93,21 @@ DriverEntry(
 	RtlZeroMemory(g_pGlobalData, sizeof(GlobalData));
 
 	g_pGlobalData->pDriverObject = DriverObject;
+
+
+	UNICODE_STRING ustrDeviceName{};
+	RtlInitUnicodeString(&ustrDeviceName, KERNELDEVICE_DEVICE_NAME);
+
+	UNICODE_STRING ustrSymbolicLink{};
+	RtlInitUnicodeString(&ustrSymbolicLink, KERNELDEVICE_DEVICE_FILE);
+
+	status = DEVICE_CTL_INITIALIZED(&ustrDeviceName, &ustrSymbolicLink);
+	if (!NT_SUCCESS(status))
+	{
+		delete g_pGlobalData;
+		return status;
+	}
+
 
 	DriverObject->DriverUnload = DriverUnload;
 	status = InitializeLogFile(L"\\??\\C:\\desktop\\Log.txt");

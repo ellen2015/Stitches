@@ -120,9 +120,12 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <DebuggerFlavor>DbgengKernelDebugger</DebuggerFlavor>
+    <ExternalIncludePath>$(ExternalIncludePath)</ExternalIncludePath>
+    <IncludePath>.\Common\;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <DebuggerFlavor>DbgengKernelDebugger</DebuggerFlavor>
+    <IncludePath>.\Common\;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM'">
     <DebuggerFlavor>DbgengKernelDebugger</DebuggerFlavor>
@@ -161,12 +164,17 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ApcInjector.hpp" />
+    <ClInclude Include="Common\Common.h" />
+    <ClInclude Include="DeviceControl.hpp" />
     <ClInclude Include="FileFilter.hpp" />
     <ClInclude Include="GenericTable.hpp" />
     <ClInclude Include="Imports.hpp" />
     <ClInclude Include="Log.hpp" />
+    <ClCompile Include="DeviceControl.cpp" />
     <ClCompile Include="FileFilter.cpp" />
+    <ClCompile Include="NetFilter.cpp" />
     <ClCompile Include="New.cpp" />
+    <ClInclude Include="NetFilter.hpp" />
     <ClInclude Include="New.hpp" />
     <ClInclude Include="Notify.hpp" />
     <ClInclude Include="ProcessCtx.hpp" />
