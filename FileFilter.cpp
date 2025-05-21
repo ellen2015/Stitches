@@ -36,9 +36,9 @@ UnloadFilter(IN FLT_FILTER_UNLOAD_FLAGS Flags)
 	delete FILEFILTER();
 
 	UNICODE_STRING ustrDeviceName{};
-	RtlInitUnicodeString(&ustrDeviceName, KERNELDEVICE_DEVICE_NAME);
+	RtlInitUnicodeString(&ustrDeviceName, DEVICE_NAME);
 	UNICODE_STRING ustrSymbolicLink{};
-	RtlInitUnicodeString(&ustrSymbolicLink, KERNELDEVICE_DEVICE_FILE);
+	RtlInitUnicodeString(&ustrSymbolicLink, SYMBOLICLINK_NAME);
 	DEVICE_CTL_FINALIZED(&ustrDeviceName, &ustrSymbolicLink);
 	delete DEVICE_CTL_INSTANCE();
 
