@@ -1,6 +1,8 @@
 ﻿#include "ProcessProtector.hpp"
 #include "Utils.hpp"
 #include "Log.hpp"
+#include "CRules.hpp"
+#include "ProcessCtx.hpp"
 
 extern GlobalData* g_pGlobalData;
 
@@ -53,7 +55,6 @@ ProcessProtector::ProcessPreOperationCallback(
 		return OB_PREOP_SUCCESS;
 	}
 
-
 	// Accessor
 	auto hInitiatorPid = PsGetCurrentProcessId();
 
@@ -94,33 +95,40 @@ ProcessProtector::ProcessPreOperationCallback(
 		return OB_PREOP_SUCCESS;
 	}
 
-
-	PUNICODE_STRING pTargetProcessPath{ nullptr };
+	WCHAR wszTargetProcess[MAX_PATH]{ 0 };
 	PUNICODE_STRING pCurrentProcessPath{ nullptr };
 	NTSTATUS status{ STATUS_SUCCESS };
 
-	status = SeLocateProcessImageName((PEPROCESS)OperationInformation->Object, &pTargetProcessPath);
-	if (!NT_SUCCESS(status) && !pTargetProcessPath)
+	ProcessContext* processCtx = PROCESS_CTX_FIND(hTargetPid);
+	if (processCtx && processCtx->ProcessPath.Buffer)
 	{
-		return OB_PREOP_SUCCESS;
+		if (processCtx->ProcessPath.Length < sizeof(wszTargetProcess))
+		{
+			RtlCopyMemory(wszTargetProcess, processCtx->ProcessPath.Buffer, processCtx->ProcessPath.Length);
+		}
 	}
+	else
+	{
+		status = GetProcessImageByPid(hTargetPid, wszTargetProcess);
+		if (!NT_SUCCESS(status))
+		{
+			LOGERROR(status, "GetProcessImageByPid failed\r\n");
+			return OB_PREOP_SUCCESS;
+		}
+	}
+	
 
 	status = SeLocateProcessImageName(PsGetCurrentProcess(), &pCurrentProcessPath);
 	if (!NT_SUCCESS(status) && !pCurrentProcessPath)
 	{
-		if (pTargetProcessPath)
-		{
-			ExFreePool(pTargetProcessPath);
-			pTargetProcessPath = nullptr;
-		}
-
+		LOGERROR(status, "SeLocateProcessImageName failed\r\n");
 		return OB_PREOP_SUCCESS;
 	}
 
 	// 针对对目标进程lsass.exe读内存的操作
 	// 如果当前进程是非法进程对lsass.exe进程进行操作
 	{
-		if (UnicodeStringContains(pTargetProcessPath, L"lsass.exe"))
+		if (KWstrnstr(wszTargetProcess, L"lsass.exe"))
 		{
 			if (!IsProtectedProcess(PsGetCurrentProcess()))
 			{
@@ -143,36 +151,22 @@ ProcessProtector::ProcessPreOperationCallback(
 
 	if (FlagOn(originalAccess, PROCESS_TERMINATE))
 	{
-		// 如果是保护进程(业务设定)
-		/*if (IsProtectProcess((PEPROCESS)OperationInformation->Object))
-		{
-			*pDesiredAccess &= ~PROCESS_TERMINATE;
-		}*/
-
 		// testing
-		if (UnicodeStringContains(pTargetProcessPath, L"notepad.exe"))
+		if (CRULES_FIND_PROTECT_PROCESS(wszTargetProcess))
 		{
 			*pDesiredAccess &= ~PROCESS_TERMINATE;
 
-			LOGINFO("[Protected] %ws kill %ws\r\n ", pCurrentProcessPath->Buffer, pTargetProcessPath->Buffer);
+			LOGINFO("[Protected] %ws kill %ws\r\n ", pCurrentProcessPath->Buffer, wszTargetProcess);
 		}
 		
 	}
 
-
-	if (pTargetProcessPath)
-	{
-		ExFreePool(pTargetProcessPath);
-		pTargetProcessPath = nullptr;
-	}
 
 	if (pCurrentProcessPath)
 	{
 		ExFreePool(pCurrentProcessPath);
 		pCurrentProcessPath = nullptr;
 	}
-
-	// 
 
 	/*
 	* TODO...
@@ -245,13 +239,31 @@ ProcessProtector::ThreadPreOperationCallback(
 		return OB_PREOP_SUCCESS;
 	}
 
+	WCHAR wszTargetProcess[MAX_PATH]{ 0 };
+	BOOLEAN bProtectd = FALSE;
+	ProcessContext* processCtx = PROCESS_CTX_FIND(hTargetPid);
+	if (processCtx && processCtx->ProcessPath.Buffer)
+	{
+		bProtectd = processCtx->bProtected;
+	}
+	else
+	{
+		auto status = GetProcessImageByPid(hTargetPid, wszTargetProcess);
+		if (!NT_SUCCESS(status))
+		{
+			LOGERROR(status, "GetProcessImageByPid failed\r\n");
+			return OB_PREOP_SUCCESS;
+		}
+
+		bProtectd = CRULES_FIND_PROTECT_PROCESS(wszTargetProcess);
+	}
 
 	if (FlagOn(*pDesiredAccess, THREAD_TERMINATE))
 	{
-		/*if (IsProtectProcess((PEPROCESS)OperationInformation->Object))
+		if (bProtectd)
 		{
 			*pDesiredAccess &= ~THREAD_TERMINATE;
-		}*/
+		}
 	}
 
 	return OB_PREOP_SUCCESS;

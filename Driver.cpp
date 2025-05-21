@@ -5,7 +5,10 @@
 #include "FileFilter.hpp"
 #include "DeviceControl.hpp"
 #include "Common.h"
+#include "CRules.hpp"
 
+#define DEVICE_NAME			L"\\Device\\" KERNELDEVICE_DEVICE_NAME
+#define SYMBOLICLINK_NAME	L"\\DosDevices\\" KERNELDEVICE_DEVICE_NAME
 
 HANDLE g_hFile{ nullptr };
 
@@ -81,7 +84,6 @@ DriverEntry(
 	UNREFERENCED_PARAMETER(RegistryPath);
 	NTSTATUS status{ STATUS_SUCCESS };
 
-
 	ExInitializeDriverRuntime(DrvRtPoolNxOptIn);
 
 	g_pGlobalData = new(NonPagedPoolNx) GlobalData;
@@ -96,10 +98,10 @@ DriverEntry(
 
 
 	UNICODE_STRING ustrDeviceName{};
-	RtlInitUnicodeString(&ustrDeviceName, KERNELDEVICE_DEVICE_NAME);
+	RtlInitUnicodeString(&ustrDeviceName, DEVICE_NAME);
 
 	UNICODE_STRING ustrSymbolicLink{};
-	RtlInitUnicodeString(&ustrSymbolicLink, KERNELDEVICE_DEVICE_FILE);
+	RtlInitUnicodeString(&ustrSymbolicLink, SYMBOLICLINK_NAME);
 
 	status = DEVICE_CTL_INITIALIZED(&ustrDeviceName, &ustrSymbolicLink);
 	if (!NT_SUCCESS(status))
@@ -108,6 +110,15 @@ DriverEntry(
 		return status;
 	}
 
+	status = CRULES_INIT();
+
+	// TEST ADD PROTECT PROCESS PATH
+	CRULES_ADD_PROTECT_PROCESS(L"C:\\Windows\\system32\\notepad.exe");
+
+	// TEST ADD TRUST PROCESS
+	CRULES_ADD_TRUST_PROCESS(L"C:\\Windows\\system32\\notepad.exe");
+
+	status = DEVICE_INITIALIZED_DISPATCH();
 
 	DriverObject->DriverUnload = DriverUnload;
 	status = InitializeLogFile(L"\\??\\C:\\desktop\\Log.txt");
@@ -165,7 +176,6 @@ DriverEntry(
 
 
 	InitSystemFucAddr();
-
 
 	NOTIFY_INIT();
 

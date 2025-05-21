@@ -34,6 +34,9 @@
     <Filter Include="Communication">
       <UniqueIdentifier>{bac85d22-f345-45a8-bb9e-5ddc6ec92db1}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Rules">
+      <UniqueIdentifier>{257147a9-62fb-4009-8ac4-2b85871ebba0}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Imports.hpp">
@@ -75,6 +78,9 @@
     <ClInclude Include="Common\Common.h">
       <Filter>Common</Filter>
     </ClInclude>
+    <ClInclude Include="CRules.hpp">
+      <Filter>Rules</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ApcInjector.cpp">
@@ -106,6 +112,9 @@
     </ClCompile>
     <ClCompile Include="DeviceControl.cpp">
       <Filter>Communication</Filter>
+    </ClCompile>
+    <ClCompile Include="CRules.cpp">
+      <Filter>Rules</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

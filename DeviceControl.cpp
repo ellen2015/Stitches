@@ -1,6 +1,8 @@
 #include "DeviceControl.hpp"
 #include "Common.h"
 #include "Imports.hpp"
+#include "CRules.hpp"
+
 
 extern GlobalData* g_pGlobalData;
 
@@ -24,7 +26,8 @@ DeviceControl::InitializeIoctlDevice(
 								0, 
 								DeviceName,
 								FILE_DEVICE_KERNELCODE, 
-								FILE_DEVICE_SECURE_OPEN, FALSE, 
+								FILE_DEVICE_SECURE_OPEN,
+								FALSE, 
 								&g_pGlobalData->pDeviceObject);
 		if (NT_SUCCESS(status))
 		{
@@ -114,7 +117,17 @@ DriverDispatch(
 		{
 		case IOCTL_STITCHES_ADD_TRUST_PROCESS:
 		{
-
+			WCHAR wszTrustProcess[MAX_PATH]{ 0 };
+			if (nInputbufferLength < sizeof(wszTrustProcess) && 
+				pIoBuffer)
+			{
+				RtlCopyMemory(wszTrustProcess, pIoBuffer, nInputbufferLength);
+				Irp->IoStatus.Status = CRULES_ADD_TRUST_PROCESS(wszTrustProcess);
+			}
+			else
+			{
+				Irp->IoStatus.Status = STATUS_INFO_LENGTH_MISMATCH;
+			}	
 		}
 		break;
 		default:

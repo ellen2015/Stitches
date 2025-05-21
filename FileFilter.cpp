@@ -7,6 +7,8 @@
 #include "ProcessProtector.hpp"
 #include "DeviceControl.hpp"
 #include "Common.h"
+#include "CRules.hpp"
+#include "Utils.hpp"
 
 extern GlobalData* g_pGlobalData;
 extern HANDLE g_hFile;
@@ -20,6 +22,19 @@ UnloadFilter(IN FLT_FILTER_UNLOAD_FLAGS Flags)
 {
 	UNREFERENCED_PARAMETER(Flags);
 
+	NOTIFY_DESTROY();
+	delete NOTIFY();
+
+	PROCESS_PROTECTOR_DESTROY();
+	delete PROCESS_PROTECTOR();
+
+	PROCESS_CTX_CLEAR();
+	ExDeleteNPagedLookasideList(&g_pGlobalData->ProcessCtxNPList);
+	delete PROCESS_CTX_INSTANCE();
+
+	FILEFILTER_DESTROY();
+	delete FILEFILTER();
+
 	UNICODE_STRING ustrDeviceName{};
 	RtlInitUnicodeString(&ustrDeviceName, KERNELDEVICE_DEVICE_NAME);
 	UNICODE_STRING ustrSymbolicLink{};
@@ -27,24 +42,14 @@ UnloadFilter(IN FLT_FILTER_UNLOAD_FLAGS Flags)
 	DEVICE_CTL_FINALIZED(&ustrDeviceName, &ustrSymbolicLink);
 	delete DEVICE_CTL_INSTANCE();
 
+	CRULES_DESTROY();
+	delete CRULES_INSTANCE();
+
 	if (g_hFile)
 	{
 		ZwClose(g_hFile);
 		g_hFile = nullptr;
 	}
-
-	PROCESS_CTX_CLEAR();
-	ExDeleteNPagedLookasideList(&g_pGlobalData->ProcessCtxNPList);
-	delete PROCESS_CTX_INSTANCE();
-
-	NOTIFY_DESTROY();
-	delete NOTIFY();
-
-	PROCESS_PROTECTOR_DESTROY();
-	delete PROCESS_PROTECTOR();
-
-	FILEFILTER_DESTROY();
-	delete FILEFILTER();
 
 	if (g_pGlobalData)
 	{
@@ -301,6 +306,28 @@ DelProtectPreCreate(
 		return FLT_PREOP_SUCCESS_NO_CALLBACK;
 	}
 
+	BOOLEAN bTrustProcess{ FALSE };
+	auto hPid = FltGetRequestorProcessId(Data);
+	ProcessContext* processContext = PROCESS_CTX_FIND(ULongToHandle(hPid));
+	if (processContext && processContext->ProcessPath.Buffer)
+	{
+		bTrustProcess = processContext->bTrusted;
+	}
+	else
+	{
+		WCHAR wszProcessPath[MAX_PATH]{ 0 };
+		auto status = GetProcessImageByPid(ULongToHandle(hPid), wszProcessPath);
+		if (!NT_SUCCESS(status))
+		{
+			bTrustProcess = FALSE;
+		}
+		else
+		{
+			bTrustProcess = CRULES_FIND_TRUST_PROCESS(wszProcessPath);
+		}
+	}
+
+
 	// FltMgr不会在I/O完成期间调用微筛选器驱动程序的操作后回调（如果存在
 	// 如果有Post Create 这里也不会调用了
 	auto status = FLT_PREOP_SUCCESS_NO_CALLBACK;
@@ -344,8 +371,8 @@ DelProtectPreCreate(
 		// 这里只是过滤了文件全路径的比对
 		// 如果需要验证文件是否在保护目录中，需要再增加一个保护目录的表(已增加)
 		// 增加了验证是否是受信任进程操作
-		if (!IsDeleteAllowed(fileName) /*||
-			!bTrustProcess*/)
+		if (!IsDeleteAllowed(fileName) &&
+			!bTrustProcess)
 		{
 			// 设置成拒绝访问
 			Data->IoStatus.Status = STATUS_ACCESS_DENIED;
@@ -379,6 +406,27 @@ FileProtectPreSetFileInformation(
 		return FLT_PREOP_SUCCESS_NO_CALLBACK;
 	}
 
+	BOOLEAN bTrustProcess{ FALSE };
+	auto hPid = FltGetRequestorProcessId(Data);
+	ProcessContext* processContext = PROCESS_CTX_FIND(ULongToHandle(hPid));
+	if (processContext && processContext->ProcessPath.Buffer)
+	{
+		bTrustProcess = processContext->bTrusted;
+	}
+	else
+	{
+		WCHAR wszProcessPath[MAX_PATH]{ 0 };
+		auto status = GetProcessImageByPid(ULongToHandle(hPid), wszProcessPath);
+		if (!NT_SUCCESS(status))
+		{
+			bTrustProcess = FALSE;
+		}
+		else
+		{
+			bTrustProcess = CRULES_FIND_TRUST_PROCESS(wszProcessPath);
+		}
+	}
+
 	auto const& params = Data->Iopb->Parameters.SetFileInformation;
 
 	// FltMgr不会在I/O完成期间调用微筛选器驱动程序的操作后回调（如果存在
@@ -400,7 +448,8 @@ FileProtectPreSetFileInformation(
 				&fi)))
 			{
 				// 示例验证，这块一定需要重写的
-				if (!IsDeleteAllowed(&fi->Name))
+				if (!IsDeleteAllowed(&fi->Name) && 
+					!bTrustProcess)
 				{
 					Data->IoStatus.Status = STATUS_ACCESS_DENIED;
 					status = FLT_PREOP_COMPLETE;
@@ -417,7 +466,8 @@ FileProtectPreSetFileInformation(
 		// 删除操作需要验证文件是否是保护目录/文件，并且是否是允许进程的操作
 		auto fileName = &FltObjects->FileObject->FileName;
 
-		if (!IsDeleteAllowed(fileName))
+		if (!IsDeleteAllowed(fileName) && 
+			!bTrustProcess)
 		{
 			// 设置成拒绝访问
 			Data->IoStatus.Status = STATUS_ACCESS_DENIED;

@@ -40,7 +40,7 @@ public:
 
 #define PROCESS_CTX_INSTANCE()	(ProcessCtx::getInstance())
 #define PROCESS_CTX_INIT()		(ProcessCtx::getInstance()->Initialization())
-#define PROCESS_CTX_ADD(x,y,z)	(ProcessCtx::getInstance()->AddProcessContext(x, y, z))
+#define PROCESS_CTX_ADD(x,y,z)	(ProcessCtx::getInstance()->AddProcessContext((x), (y), (z)))
 #define PROCESS_CTX_DEL(x)		(ProcessCtx::getInstance()->DeleteProcessCtxByPid(x))
 #define PROCESS_CTX_FIND(x)		(ProcessCtx::getInstance()->FindProcessCtxByPid(x))
 #define PROCESS_CTX_CLEAR()		(ProcessCtx::getInstance()->CleanupProcessCtxList())
