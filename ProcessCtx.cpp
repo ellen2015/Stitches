@@ -28,10 +28,13 @@ ProcessCtx::AddProcessContext(
 	IN CONST			HANDLE		Pid,
 	IN OUT OPTIONAL		PPS_CREATE_NOTIFY_INFO CreateInfo)
 {
+	ExAcquireFastMutex(&g_pGlobalData->ProcessCtxFastMutex);
+
 	ProcessContext* pProcessCtx = reinterpret_cast<ProcessContext*>(ExAllocateFromNPagedLookasideList(&g_pGlobalData->ProcessCtxNPList));
 	if (!pProcessCtx)
 	{
 		LOGERROR(STATUS_INSUFFICIENT_RESOURCES, "ExAllocateFromNPagedLookasideList");
+		ExReleaseFastMutex(&g_pGlobalData->ProcessCtxFastMutex);
 		return;
 	}
 	RtlZeroMemory(pProcessCtx, ProcessContextSize);
@@ -51,7 +54,7 @@ ProcessCtx::AddProcessContext(
 		if (RtlPrefixUnicodeString(&ustrPrefix, CreateInfo->ImageFileName, TRUE))
 		{
 			// process image file name
-			pProcessCtx->ProcessPath.Buffer = reinterpret_cast<PWCH>(ExAllocatePoolWithTag(PagedPool, CreateInfo->ImageFileName->MaximumLength + sizeof(UNICODE_STRING), ProcessContextTag));
+			pProcessCtx->ProcessPath.Buffer = reinterpret_cast<PWCH>(ExAllocatePoolWithTag(NonPagedPoolNx, CreateInfo->ImageFileName->MaximumLength + sizeof(UNICODE_STRING), ProcessContextTag));
 			if (pProcessCtx->ProcessPath.Buffer)
 			{
 				RtlZeroMemory(pProcessCtx->ProcessPath.Buffer, CreateInfo->ImageFileName->MaximumLength + sizeof(UNICODE_STRING));
@@ -77,7 +80,7 @@ ProcessCtx::AddProcessContext(
 
 
 		// process commandline
-		pProcessCtx->ProcessCmdLine.Buffer = reinterpret_cast<PWCH>(ExAllocatePoolWithTag(PagedPool, CreateInfo->CommandLine->MaximumLength + sizeof(UNICODE_STRING), ProcessContextTag));
+		pProcessCtx->ProcessCmdLine.Buffer = reinterpret_cast<PWCH>(ExAllocatePoolWithTag(NonPagedPoolNx, CreateInfo->CommandLine->MaximumLength + sizeof(UNICODE_STRING), ProcessContextTag));
 		if (pProcessCtx->ProcessCmdLine.Buffer)
 		{
 			RtlZeroMemory(pProcessCtx->ProcessCmdLine.Buffer, CreateInfo->CommandLine->MaximumLength + sizeof(UNICODE_STRING));
@@ -91,9 +94,6 @@ ProcessCtx::AddProcessContext(
 			break;
 		}
 
-
-		ExAcquireFastMutex(&g_pGlobalData->ProcessCtxFastMutex);
-
 		InsertHeadList(&g_pGlobalData->ProcessCtxList, &pProcessCtx->ListHeader);
 
 		ExReleaseFastMutex(&g_pGlobalData->ProcessCtxFastMutex);
@@ -101,7 +101,7 @@ ProcessCtx::AddProcessContext(
 		return;
 	} while (FALSE);
 
-
+	ExReleaseFastMutex(&g_pGlobalData->ProcessCtxFastMutex);
 	// failed 
 	if (pProcessCtx->ProcessPath.Buffer)
 	{
@@ -118,8 +118,10 @@ ProcessCtx::AddProcessContext(
 VOID
 ProcessCtx::DeleteProcessCtxByPid(IN CONST HANDLE ProcessId)
 {
+	ExAcquireFastMutex(&g_pGlobalData->ProcessCtxFastMutex);
 	if (!ProcessId || IsListEmpty(&g_pGlobalData->ProcessCtxList))
 	{
+		ExReleaseFastMutex(&g_pGlobalData->ProcessCtxFastMutex);
 		return;
 	}
 
@@ -144,12 +146,7 @@ ProcessCtx::DeleteProcessCtxByPid(IN CONST HANDLE ProcessId)
 					pNode->ProcessCmdLine.Buffer = nullptr;
 				}
 
-				ExAcquireFastMutex(&g_pGlobalData->ProcessCtxFastMutex);
-
-				RemoveEntryList(&pNode->ListHeader);
-
-				ExReleaseFastMutex(&g_pGlobalData->ProcessCtxFastMutex);
-
+				RemoveEntryList(&pNode->ListHeader);				
 
 				ExFreeToNPagedLookasideList(&g_pGlobalData->ProcessCtxNPList, pNode);
 
@@ -161,20 +158,21 @@ ProcessCtx::DeleteProcessCtxByPid(IN CONST HANDLE ProcessId)
 			pEntry = pEntry->Flink;
 		}
 	}
+	ExReleaseFastMutex(&g_pGlobalData->ProcessCtxFastMutex);
 }
 
 ProcessContext*
 ProcessCtx::FindProcessCtxByPid(IN CONST HANDLE Pid)
 {
+	ExAcquireFastMutex(&g_pGlobalData->ProcessCtxFastMutex);
 	if (!Pid || IsListEmpty(&g_pGlobalData->ProcessCtxList))
 	{
+		ExReleaseFastMutex(&g_pGlobalData->ProcessCtxFastMutex);
 		return nullptr;
 	}
 
 	ProcessContext* pNode{ nullptr };
 	PLIST_ENTRY			pEntry = g_pGlobalData->ProcessCtxList.Flink;
-
-	ExAcquireFastMutex(&g_pGlobalData->ProcessCtxFastMutex);
 
 	while (pEntry != &g_pGlobalData->ProcessCtxList)
 	{
@@ -197,6 +195,7 @@ ProcessCtx::FindProcessCtxByPid(IN CONST HANDLE Pid)
 VOID
 ProcessCtx::CleanupProcessCtxList()
 {
+	ExAcquireFastMutex(&g_pGlobalData->ProcessCtxFastMutex);
 	while (!IsListEmpty(&g_pGlobalData->ProcessCtxList))
 	{
 		PLIST_ENTRY pEntry = g_pGlobalData->ProcessCtxList.Flink;
@@ -216,13 +215,11 @@ ProcessCtx::CleanupProcessCtxList()
 				pNode->ProcessCmdLine.Buffer = nullptr;
 			}
 
-			ExAcquireFastMutex(&g_pGlobalData->ProcessCtxFastMutex);
-
-			RemoveEntryList(&pNode->ListHeader);
-
-			ExReleaseFastMutex(&g_pGlobalData->ProcessCtxFastMutex);
+			RemoveEntryList(&pNode->ListHeader);		
 
 			ExFreeToNPagedLookasideList(&g_pGlobalData->ProcessCtxNPList, pNode);
 		}
 	}
+
+	ExReleaseFastMutex(&g_pGlobalData->ProcessCtxFastMutex);
 }

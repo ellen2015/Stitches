@@ -28,12 +28,12 @@ UnloadFilter(IN FLT_FILTER_UNLOAD_FLAGS Flags)
 	PROCESS_PROTECTOR_DESTROY();
 	delete PROCESS_PROTECTOR();
 
+	FILEFILTER_DESTROY();
+	delete FILEFILTER();
+
 	PROCESS_CTX_CLEAR();
 	ExDeleteNPagedLookasideList(&g_pGlobalData->ProcessCtxNPList);
 	delete PROCESS_CTX_INSTANCE();
-
-	FILEFILTER_DESTROY();
-	delete FILEFILTER();
 
 	UNICODE_STRING ustrDeviceName{};
 	RtlInitUnicodeString(&ustrDeviceName, DEVICE_NAME);
