@@ -2,6 +2,7 @@
 #include "Imports.hpp"
 #include "Utils.hpp"
 #include "Log.hpp"
+#include "CRules.hpp"
 
 extern GlobalData* g_pGlobalData;
 
@@ -45,19 +46,33 @@ ProcessCtx::AddProcessContext(
 
 	do
 	{
-		// process image file name
-		pProcessCtx->ProcessPath.Buffer = reinterpret_cast<PWCH>(ExAllocatePoolWithTag(PagedPool, CreateInfo->ImageFileName->MaximumLength + sizeof(UNICODE_STRING), ProcessContextTag));
-		if (pProcessCtx->ProcessPath.Buffer)
+		UNICODE_STRING ustrPrefix{};
+		RtlInitUnicodeString(&ustrPrefix, L"\\??\\");
+		if (RtlPrefixUnicodeString(&ustrPrefix, CreateInfo->ImageFileName, TRUE))
 		{
-			RtlZeroMemory(pProcessCtx->ProcessPath.Buffer, CreateInfo->ImageFileName->MaximumLength + sizeof(UNICODE_STRING));
-			pProcessCtx->ProcessPath.Length = 0;
-			pProcessCtx->ProcessPath.MaximumLength = CreateInfo->ImageFileName->MaximumLength;
-			RtlCopyUnicodeString(&pProcessCtx->ProcessPath, CreateInfo->ImageFileName);
-		}
-		else
-		{
-			LOGERROR(STATUS_INSUFFICIENT_RESOURCES, "[ProcessCtx ERROR]ProcessCtx ProcessPath buffer alloc failed\r\n");
-			break;
+			// process image file name
+			pProcessCtx->ProcessPath.Buffer = reinterpret_cast<PWCH>(ExAllocatePoolWithTag(PagedPool, CreateInfo->ImageFileName->MaximumLength + sizeof(UNICODE_STRING), ProcessContextTag));
+			if (pProcessCtx->ProcessPath.Buffer)
+			{
+				RtlZeroMemory(pProcessCtx->ProcessPath.Buffer, CreateInfo->ImageFileName->MaximumLength + sizeof(UNICODE_STRING));
+				pProcessCtx->ProcessPath.Length = CreateInfo->ImageFileName->Length - sizeof(L"\\??");
+				pProcessCtx->ProcessPath.MaximumLength = CreateInfo->ImageFileName->MaximumLength;
+				//RtlCopyUnicodeString(&pProcessCtx->ProcessPath, CreateInfo->ImageFileName);
+				RtlCopyMemory(pProcessCtx->ProcessPath.Buffer, 
+					reinterpret_cast<PUCHAR>(CreateInfo->ImageFileName->Buffer) + sizeof(L"\\??"),
+					CreateInfo->ImageFileName->Length - sizeof(L"\\??"));
+
+				// check trust process
+				pProcessCtx->bTrusted = CRULES_FIND_TRUST_PROCESS(pProcessCtx->ProcessPath.Buffer);
+				
+				// check protect process
+				pProcessCtx->bProtected = CRULES_FIND_PROTECT_PROCESS(pProcessCtx->ProcessPath.Buffer);
+			}
+			else
+			{
+				LOGERROR(STATUS_INSUFFICIENT_RESOURCES, "[ProcessCtx ERROR]ProcessCtx ProcessPath buffer alloc failed\r\n");
+				break;
+			}
 		}
 
 
