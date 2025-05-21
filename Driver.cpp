@@ -7,8 +7,7 @@
 #include "Common.h"
 #include "CRules.hpp"
 
-#define DEVICE_NAME			L"\\Device\\" KERNELDEVICE_DEVICE_NAME
-#define SYMBOLICLINK_NAME	L"\\DosDevices\\" KERNELDEVICE_DEVICE_NAME
+
 
 HANDLE g_hFile{ nullptr };
 
