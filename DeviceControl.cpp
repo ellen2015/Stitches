@@ -2,7 +2,7 @@
 #include "Common.h"
 #include "Imports.hpp"
 #include "CRules.hpp"
-
+#include "Log.hpp"
 
 extern GlobalData* g_pGlobalData;
 
@@ -115,6 +115,53 @@ DriverDispatch(
 		auto nIoctlCode = pIrpStack->Parameters.DeviceIoControl.IoControlCode;
 		switch (nIoctlCode)
 		{
+		case IOCTL_STITCHES_SET_HOOK_DLL_PATH:
+		{	
+			if (nInputbufferLength >= sizeof(HOOK_DLL_PATH) && 
+				pIoBuffer)
+			{
+				PHOOK_DLL_PATH pHookDllPath = reinterpret_cast<PHOOK_DLL_PATH>(pIoBuffer);
+
+				auto nAllocDllLength = MAX_PATH * 2 + sizeof(UNICODE_STRING);
+
+				g_pGlobalData->InjectDllx64.Buffer = reinterpret_cast<PWCH>(ExAllocatePoolWithTag(NonPagedPoolNx, nAllocDllLength, GLOBALDATA_TAG));
+				if (g_pGlobalData->InjectDllx64.Buffer)
+				{
+					RtlZeroMemory(g_pGlobalData->InjectDllx64.Buffer, nAllocDllLength);
+					g_pGlobalData->InjectDllx64.Length = 
+					g_pGlobalData->InjectDllx64.MaximumLength = static_cast<USHORT>((wcslen(pHookDllPath->x64Dll) + 1) * sizeof(WCHAR));
+					
+					RtlCopyMemory(g_pGlobalData->InjectDllx64.Buffer, pHookDllPath->x64Dll, wcslen(pHookDllPath->x64Dll) * sizeof(WCHAR));
+				}
+				else
+				{
+					LOGERROR(STATUS_NO_MEMORY, "g_pGlobalData->InjectDllx64.Buffer alloc faid\r\n");
+				}
+
+				g_pGlobalData->InjectDllx86.Buffer = reinterpret_cast<PWCH>(ExAllocatePoolWithTag(NonPagedPoolNx, nAllocDllLength, GLOBALDATA_TAG));
+				if (g_pGlobalData->InjectDllx86.Buffer)
+				{
+					RtlZeroMemory(g_pGlobalData->InjectDllx86.Buffer, nAllocDllLength);
+					g_pGlobalData->InjectDllx86.Length = 
+					g_pGlobalData->InjectDllx86.MaximumLength = static_cast<USHORT>((wcslen(pHookDllPath->x86Dll) + 1) * sizeof(WCHAR));
+					
+					RtlCopyMemory(g_pGlobalData->InjectDllx86.Buffer, pHookDllPath->x86Dll, wcslen(pHookDllPath->x86Dll) * sizeof(WCHAR));
+				}
+				else
+				{
+					LOGERROR(STATUS_NO_MEMORY, "g_pGlobalData->InjectDllx86.Buffer alloc faid\r\n");
+				}
+
+				Irp->IoStatus.Status = STATUS_SUCCESS;
+			}
+			else
+			{
+				Irp->IoStatus.Status = STATUS_INFO_LENGTH_MISMATCH;
+			}
+		}
+		break;
+
+
 		case IOCTL_STITCHES_ADD_TRUST_PROCESS:
 		{
 			WCHAR wszTrustProcess[MAX_PATH]{ 0 };
@@ -130,6 +177,56 @@ DriverDispatch(
 			}	
 		}
 		break;
+
+		case IOCTL_STITCHES_DEL_TRUST_PROCESS:
+		{
+			WCHAR wszTrustProcess[MAX_PATH]{ 0 };
+			if (nInputbufferLength < sizeof(wszTrustProcess) &&
+				pIoBuffer)
+			{
+				RtlCopyMemory(wszTrustProcess, pIoBuffer, nInputbufferLength);
+				Irp->IoStatus.Status = CRULES_DEL_TRUST_PROCESS(wszTrustProcess);
+			}
+			else
+			{
+				Irp->IoStatus.Status = STATUS_INFO_LENGTH_MISMATCH;
+			}
+		}
+		break;
+
+		case IOCTL_STITCHES_ADD_PROTECT_PROCESS:
+		{
+			WCHAR wszTrustProcess[MAX_PATH]{ 0 };
+			if (nInputbufferLength < sizeof(wszTrustProcess) &&
+				pIoBuffer)
+			{
+				RtlCopyMemory(wszTrustProcess, pIoBuffer, nInputbufferLength);
+				Irp->IoStatus.Status = CRULES_ADD_PROTECT_PROCESS(wszTrustProcess);
+			}
+			else
+			{
+				Irp->IoStatus.Status = STATUS_INFO_LENGTH_MISMATCH;
+			}
+		}
+		break;
+
+		case IOCTL_STITCHES_DEL_PROTECT_PROCESS:
+		{
+			WCHAR wszTrustProcess[MAX_PATH]{ 0 };
+			if (nInputbufferLength < sizeof(wszTrustProcess) &&
+				pIoBuffer)
+			{
+				RtlCopyMemory(wszTrustProcess, pIoBuffer, nInputbufferLength);
+				Irp->IoStatus.Status = CRULES_DEL_PROTECT_PROCESS(wszTrustProcess);
+			}
+			else
+			{
+				Irp->IoStatus.Status = STATUS_INFO_LENGTH_MISMATCH;
+			}
+		}
+		break;
+
+
 		default:
 			break;
 		}
