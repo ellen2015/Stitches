@@ -91,7 +91,7 @@ DriverEntry(
 		DbgPrint("g_pGlobalData alloc failed\r\n");
 		return STATUS_NO_MEMORY;
 	}
-	RtlZeroMemory(g_pGlobalData, sizeof(GlobalData));
+	//RtlZeroMemory(g_pGlobalData, sizeof(GlobalData));
 
 	g_pGlobalData->pDriverObject = DriverObject;
 

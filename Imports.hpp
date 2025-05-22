@@ -9,6 +9,7 @@
 #include <ntimage.h>
 #include <ntstrsafe.h>
 #include <ntddk.h>
+#include "Locks.hpp"
 
 
 #ifndef MAX_PATH
@@ -382,6 +383,8 @@ typedef enum  _VolumeControlFlag
 
 struct  GlobalData
 {
+	GlobalData() = default;
+
 	PDRIVER_OBJECT							pDriverObject	= nullptr;
 	PDEVICE_OBJECT							pDeviceObject	= nullptr;
 	PFLT_FILTER								pFileFilter		= nullptr;
@@ -405,7 +408,7 @@ struct  GlobalData
 #endif
 	NPAGED_LOOKASIDE_LIST					ProcessCtxNPList;
 	LIST_ENTRY								ProcessCtxList;
-	FAST_MUTEX								ProcessCtxFastMutex;
+	kstd::fast_mutex						ProcessCtxFastMutex;
 
 
 	// APC Injector

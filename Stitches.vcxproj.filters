@@ -81,6 +81,9 @@
     <ClInclude Include="CRules.hpp">
       <Filter>Rules</Filter>
     </ClInclude>
+    <ClInclude Include="Locks.hpp">
+      <Filter>KernelStl</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ApcInjector.cpp">

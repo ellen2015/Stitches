@@ -3,6 +3,7 @@
 #include "Utils.hpp"
 #include "Log.hpp"
 #include "CRules.hpp"
+#include "Locks.hpp"
 
 extern GlobalData* g_pGlobalData;
 
@@ -17,7 +18,7 @@ VOID ProcessCtx::Initialization()
 		0);
 
 	InitializeListHead(&g_pGlobalData->ProcessCtxList);
-	ExInitializeFastMutex(&g_pGlobalData->ProcessCtxFastMutex);
+	//ExInitializeFastMutex(&g_pGlobalData->ProcessCtxFastMutex);
 }
 
 
@@ -28,13 +29,13 @@ ProcessCtx::AddProcessContext(
 	IN CONST			HANDLE		Pid,
 	IN OUT OPTIONAL		PPS_CREATE_NOTIFY_INFO CreateInfo)
 {
-	ExAcquireFastMutex(&g_pGlobalData->ProcessCtxFastMutex);
-
+	//ExAcquireFastMutex(&g_pGlobalData->ProcessCtxFastMutex);
+	kstd::UniqueLock<kstd::fast_mutex> _lock(g_pGlobalData->ProcessCtxFastMutex);
 	ProcessContext* pProcessCtx = reinterpret_cast<ProcessContext*>(ExAllocateFromNPagedLookasideList(&g_pGlobalData->ProcessCtxNPList));
 	if (!pProcessCtx)
 	{
 		LOGERROR(STATUS_INSUFFICIENT_RESOURCES, "ExAllocateFromNPagedLookasideList");
-		ExReleaseFastMutex(&g_pGlobalData->ProcessCtxFastMutex);
+		//ExReleaseFastMutex(&g_pGlobalData->ProcessCtxFastMutex);
 		return;
 	}
 	RtlZeroMemory(pProcessCtx, ProcessContextSize);
@@ -96,12 +97,12 @@ ProcessCtx::AddProcessContext(
 
 		InsertHeadList(&g_pGlobalData->ProcessCtxList, &pProcessCtx->ListHeader);
 
-		ExReleaseFastMutex(&g_pGlobalData->ProcessCtxFastMutex);
+		//ExReleaseFastMutex(&g_pGlobalData->ProcessCtxFastMutex);
 
 		return;
 	} while (FALSE);
 
-	ExReleaseFastMutex(&g_pGlobalData->ProcessCtxFastMutex);
+	//ExReleaseFastMutex(&g_pGlobalData->ProcessCtxFastMutex);
 	// failed 
 	if (pProcessCtx->ProcessPath.Buffer)
 	{
@@ -118,10 +119,11 @@ ProcessCtx::AddProcessContext(
 VOID
 ProcessCtx::DeleteProcessCtxByPid(IN CONST HANDLE ProcessId)
 {
-	ExAcquireFastMutex(&g_pGlobalData->ProcessCtxFastMutex);
+	//ExAcquireFastMutex(&g_pGlobalData->ProcessCtxFastMutex);
+	kstd::UniqueLock<kstd::fast_mutex> _lock(g_pGlobalData->ProcessCtxFastMutex);
 	if (!ProcessId || IsListEmpty(&g_pGlobalData->ProcessCtxList))
 	{
-		ExReleaseFastMutex(&g_pGlobalData->ProcessCtxFastMutex);
+		//ExReleaseFastMutex(&g_pGlobalData->ProcessCtxFastMutex);
 		return;
 	}
 
@@ -158,16 +160,17 @@ ProcessCtx::DeleteProcessCtxByPid(IN CONST HANDLE ProcessId)
 			pEntry = pEntry->Flink;
 		}
 	}
-	ExReleaseFastMutex(&g_pGlobalData->ProcessCtxFastMutex);
+	//ExReleaseFastMutex(&g_pGlobalData->ProcessCtxFastMutex);
 }
 
 ProcessContext*
 ProcessCtx::FindProcessCtxByPid(IN CONST HANDLE Pid)
 {
-	ExAcquireFastMutex(&g_pGlobalData->ProcessCtxFastMutex);
+	//ExAcquireFastMutex(&g_pGlobalData->ProcessCtxFastMutex);
+	kstd::UniqueLock<kstd::fast_mutex> _lock(g_pGlobalData->ProcessCtxFastMutex);
 	if (!Pid || IsListEmpty(&g_pGlobalData->ProcessCtxList))
 	{
-		ExReleaseFastMutex(&g_pGlobalData->ProcessCtxFastMutex);
+		//ExReleaseFastMutex(&g_pGlobalData->ProcessCtxFastMutex);
 		return nullptr;
 	}
 
@@ -179,14 +182,14 @@ ProcessCtx::FindProcessCtxByPid(IN CONST HANDLE Pid)
 		pNode = CONTAINING_RECORD(pEntry, ProcessContext, ListHeader);
 		if (pNode && (Pid == pNode->Pid))
 		{
-			ExReleaseFastMutex(&g_pGlobalData->ProcessCtxFastMutex);
+			//ExReleaseFastMutex(&g_pGlobalData->ProcessCtxFastMutex);
 			return pNode;
 		}
 
 		pEntry = pEntry->Flink;
 	}
 
-	ExReleaseFastMutex(&g_pGlobalData->ProcessCtxFastMutex);
+	//ExReleaseFastMutex(&g_pGlobalData->ProcessCtxFastMutex);
 
 	return pNode;
 }
@@ -195,7 +198,8 @@ ProcessCtx::FindProcessCtxByPid(IN CONST HANDLE Pid)
 VOID
 ProcessCtx::CleanupProcessCtxList()
 {
-	ExAcquireFastMutex(&g_pGlobalData->ProcessCtxFastMutex);
+	//ExAcquireFastMutex(&g_pGlobalData->ProcessCtxFastMutex);
+	kstd::UniqueLock<kstd::fast_mutex> _lock(g_pGlobalData->ProcessCtxFastMutex);
 	while (!IsListEmpty(&g_pGlobalData->ProcessCtxList))
 	{
 		PLIST_ENTRY pEntry = g_pGlobalData->ProcessCtxList.Flink;
@@ -221,5 +225,5 @@ ProcessCtx::CleanupProcessCtxList()
 		}
 	}
 
-	ExReleaseFastMutex(&g_pGlobalData->ProcessCtxFastMutex);
+	//ExReleaseFastMutex(&g_pGlobalData->ProcessCtxFastMutex);
 }

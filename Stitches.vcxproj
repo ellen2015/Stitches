@@ -170,6 +170,7 @@
     <ClInclude Include="FileFilter.hpp" />
     <ClInclude Include="GenericTable.hpp" />
     <ClInclude Include="Imports.hpp" />
+    <ClInclude Include="Locks.hpp" />
     <ClInclude Include="Log.hpp" />
     <ClCompile Include="CRules.cpp" />
     <ClCompile Include="DeviceControl.cpp" />
