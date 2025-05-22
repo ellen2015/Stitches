@@ -23,17 +23,26 @@ public:
 		}
 		else
 		{
-			auto pObject = new(NonPagedPoolNx) T;
-			if (!InterlockedCompareExchangePointer((PVOID*)&_Instance, pObject, nullptr))
+			if (!InterlockedCompareExchangePointer((PVOID*)&_Instance, 0x1, nullptr))
 			{
+				auto pObject = new(NonPagedPoolNx) T;
+
+				InterlockedCompareExchangePointer((PVOID*)&_Instance, pObject, nullptr);
+
 				return _Instance;
 			}
 			else
 			{
-				delete pObject;
-				return _Instance;
+				return forceWait();
 			}
 		}
+	}
+
+	static T* forceWait()
+	{
+		while (((ULONG_PTR)_Instance >> 48) == 0) _mm_pause();
+
+		return _Instance;
 	}
 };
 
