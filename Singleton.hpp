@@ -27,7 +27,7 @@ public:
 			{
 				auto pObject = new(NonPagedPoolNx) T;
 
-				InterlockedCompareExchangePointer((PVOID*)&_Instance, pObject, nullptr);
+				InterlockedCompareExchangePointer((PVOID*)&_Instance, pObject, reinterpret_cast<PVOID>(0x1));
 
 				return _Instance;
 			}
