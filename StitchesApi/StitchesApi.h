@@ -24,16 +24,50 @@ extern "C"
 #endif
 #endif // _C_API
 
+	template <typename T>
+	class Singleton {
+	public:
+		Singleton(const Singleton&) = delete;
+		Singleton& operator=(const Singleton&) = delete;
+
+		static T& getInstance()
+		{
+			std::call_once(_InitInstanceFlag, []() {_Instance.reset(new T()); });
+			return *_Instance;
+		}
+
+	protected:
+		Singleton() = default;
+		virtual ~Singleton() = default;
+
+	private:
+		static std::once_flag		_InitInstanceFlag;
+		static std::unique_ptr<T>	_Instance;	
+	};
+
+	template <typename T>
+	std::once_flag Singleton<T>::_InitInstanceFlag;
+
+	template <typename T>
+	std::unique_ptr<T> Singleton<T>::_Instance = nullptr;
 
 
-// 此类是从 dll 导出的
-class STITCHESAPI_API CStitchesApi {
-public:
-	CStitchesApi(void);
-	// TODO: 在此处添加方法。
+	// 此类是从 dll 导出的
+	class STITCHESAPI_API CStitchesApi : public Singleton<CStitchesApi>
+	{
+	public:
+		CStitchesApi(void);
 
-	BOOLEAN STITCHESAPI_CC AddTrustProcess(CONST std::wstring& ProcessPath);
-};
+		BOOLEAN STITCHESAPI_CC AddTrustProcess(CONST std::wstring& ProcessPath);
+		BOOLEAN STITCHESAPI_CC DelTrustProcess(CONST std::wstring& ProcessPath);
+		BOOLEAN STITCHESAPI_CC AddProtectProcess(CONST std::wstring& ProcessPath);
+		BOOLEAN STITCHESAPI_CC DelProtectProcess(CONST std::wstring& ProcessPath);
+		BOOLEAN STITCHESAPI_CC AddProtectFile(CONST std::wstring& ProcessPath);
+		BOOLEAN STITCHESAPI_CC DelProtectFile(CONST std::wstring& ProcessPath);
+
+		BOOLEAN STITCHESAPI_CC SetHookDllPath(CONST std::wstring& x64dll, CONST std::wstring& x86dll);
+
+	};
 
 
 //STITCHESAPI_API BOOLEAN STITCHESAPI_CC AddTrustProcess(CONST std::wstring& ProcessPath);
