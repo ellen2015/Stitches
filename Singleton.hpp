@@ -23,7 +23,7 @@ public:
 		}
 		else
 		{
-			if (!InterlockedCompareExchangePointer((PVOID*)&_Instance, 0x1, nullptr))
+			if (!InterlockedCompareExchangePointer((PVOID*)&_Instance, reinterpret_cast<PVOID>(0x1), nullptr))
 			{
 				auto pObject = new(NonPagedPoolNx) T;
 
